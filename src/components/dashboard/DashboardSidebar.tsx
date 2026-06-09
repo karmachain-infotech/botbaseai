@@ -27,8 +27,8 @@ export function DashboardSidebar() {
         {navItems.map((item) => {
           const isActive =
             item.to === "/dashboard"
-              ? pathname === "/dashboard" || pathname === "/dashboard/"
-              : pathname.startsWith(item.to) && (pathname === item.to || pathname.startsWith(item.to + "/"));
+              ? pathname === "/dashboard" || pathname === "/dashboard/" || pathname.startsWith("/dashboard/agents/")
+              : pathname === item.to || pathname.startsWith(item.to + "/");
           return (
             <Link
               key={item.label}

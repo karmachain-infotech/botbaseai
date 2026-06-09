@@ -1,20 +1,26 @@
-import { getGeminiClient } from "../gemini";
+import { pipeline } from "@xenova/transformers";
 import { ExternalServiceError, handleServerError } from "../errors";
 
-const EMBEDDING_MODEL = "embedding-001";
+let extractor: Awaited<ReturnType<typeof pipeline>> | null = null;
+
+async function getExtractor() {
+  if (!extractor) {
+    extractor = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2");
+  }
+  return extractor;
+}
+
+const EMBEDDING_DIMS = 384;
 
 export async function createEmbedding(text: string): Promise<number[]> {
   try {
-    const genAI = getGeminiClient();
-    const model = genAI.getGenerativeModel({ model: EMBEDDING_MODEL });
-    const result = await model.embedContent({
-      content: { parts: [{ text }] },
-    });
-    return result.embedding.values;
+    const e = await getExtractor();
+    const result = await e(text, { pooling: "mean", normalize: true });
+    return Array.from(result.data);
   } catch (error) {
     console.error("[createEmbedding] Original error:", error);
     throw handleServerError(
-      new ExternalServiceError("Gemini", "Failed to create embedding. Please try again."),
+      new ExternalServiceError("Embedding", "Failed to create embedding. Please try again."),
       "createEmbedding",
     );
   }
@@ -22,19 +28,14 @@ export async function createEmbedding(text: string): Promise<number[]> {
 
 export async function createEmbeddings(texts: string[]): Promise<number[][]> {
   try {
-    const genAI = getGeminiClient();
-    const model = genAI.getGenerativeModel({ model: EMBEDDING_MODEL });
-    const result = await model.batchEmbedContents({
-      requests: texts.map((t) => ({
-        content: { parts: [{ text: t }] },
-      })),
-    });
-    return result.embeddings.map((e) => e.values);
+    return await Promise.all(texts.map((text) => createEmbedding(text)));
   } catch (error) {
     console.error("[createEmbeddings] Original error:", error);
     throw handleServerError(
-      new ExternalServiceError("Gemini", "Failed to create embeddings. Please try again."),
+      new ExternalServiceError("Embedding", "Failed to create embeddings. Please try again."),
       "createEmbeddings",
     );
   }
 }
+
+export { EMBEDDING_DIMS };

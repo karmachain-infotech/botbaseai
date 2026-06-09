@@ -29,6 +29,7 @@ import { Route as DashboardActivityRouteImport } from './routes/dashboard/activi
 import { Route as DashboardAgentsIdIndexRouteImport } from './routes/dashboard/agents/$id/index'
 import { Route as DashboardAgentsIdSourcesRouteImport } from './routes/dashboard/agents/$id/sources'
 import { Route as DashboardAgentsIdSettingsRouteImport } from './routes/dashboard/agents/$id/settings'
+import { Route as DashboardAgentsIdEmbedTestRouteImport } from './routes/dashboard/agents/$id/embed-test'
 import { Route as DashboardAgentsIdAnalyticsRouteImport } from './routes/dashboard/agents/$id/analytics'
 import { Route as DashboardAgentsIdActivityRouteImport } from './routes/dashboard/agents/$id/activity'
 import { Route as DashboardAgentsIdActionsRouteImport } from './routes/dashboard/agents/$id/actions'
@@ -135,6 +136,12 @@ const DashboardAgentsIdSettingsRoute =
     path: '/agents/$id/settings',
     getParentRoute: () => DashboardRoute,
   } as any)
+const DashboardAgentsIdEmbedTestRoute =
+  DashboardAgentsIdEmbedTestRouteImport.update({
+    id: '/agents/$id/embed-test',
+    path: '/agents/$id/embed-test',
+    getParentRoute: () => DashboardRoute,
+  } as any)
 const DashboardAgentsIdAnalyticsRoute =
   DashboardAgentsIdAnalyticsRouteImport.update({
     id: '/agents/$id/analytics',
@@ -175,6 +182,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/agents/$id/actions': typeof DashboardAgentsIdActionsRoute
   '/dashboard/agents/$id/activity': typeof DashboardAgentsIdActivityRoute
   '/dashboard/agents/$id/analytics': typeof DashboardAgentsIdAnalyticsRoute
+  '/dashboard/agents/$id/embed-test': typeof DashboardAgentsIdEmbedTestRoute
   '/dashboard/agents/$id/settings': typeof DashboardAgentsIdSettingsRoute
   '/dashboard/agents/$id/sources': typeof DashboardAgentsIdSourcesRoute
   '/dashboard/agents/$id/': typeof DashboardAgentsIdIndexRoute
@@ -199,6 +207,7 @@ export interface FileRoutesByTo {
   '/dashboard/agents/$id/actions': typeof DashboardAgentsIdActionsRoute
   '/dashboard/agents/$id/activity': typeof DashboardAgentsIdActivityRoute
   '/dashboard/agents/$id/analytics': typeof DashboardAgentsIdAnalyticsRoute
+  '/dashboard/agents/$id/embed-test': typeof DashboardAgentsIdEmbedTestRoute
   '/dashboard/agents/$id/settings': typeof DashboardAgentsIdSettingsRoute
   '/dashboard/agents/$id/sources': typeof DashboardAgentsIdSourcesRoute
   '/dashboard/agents/$id': typeof DashboardAgentsIdIndexRoute
@@ -225,6 +234,7 @@ export interface FileRoutesById {
   '/dashboard/agents/$id/actions': typeof DashboardAgentsIdActionsRoute
   '/dashboard/agents/$id/activity': typeof DashboardAgentsIdActivityRoute
   '/dashboard/agents/$id/analytics': typeof DashboardAgentsIdAnalyticsRoute
+  '/dashboard/agents/$id/embed-test': typeof DashboardAgentsIdEmbedTestRoute
   '/dashboard/agents/$id/settings': typeof DashboardAgentsIdSettingsRoute
   '/dashboard/agents/$id/sources': typeof DashboardAgentsIdSourcesRoute
   '/dashboard/agents/$id/': typeof DashboardAgentsIdIndexRoute
@@ -252,6 +262,7 @@ export interface FileRouteTypes {
     | '/dashboard/agents/$id/actions'
     | '/dashboard/agents/$id/activity'
     | '/dashboard/agents/$id/analytics'
+    | '/dashboard/agents/$id/embed-test'
     | '/dashboard/agents/$id/settings'
     | '/dashboard/agents/$id/sources'
     | '/dashboard/agents/$id/'
@@ -276,6 +287,7 @@ export interface FileRouteTypes {
     | '/dashboard/agents/$id/actions'
     | '/dashboard/agents/$id/activity'
     | '/dashboard/agents/$id/analytics'
+    | '/dashboard/agents/$id/embed-test'
     | '/dashboard/agents/$id/settings'
     | '/dashboard/agents/$id/sources'
     | '/dashboard/agents/$id'
@@ -301,6 +313,7 @@ export interface FileRouteTypes {
     | '/dashboard/agents/$id/actions'
     | '/dashboard/agents/$id/activity'
     | '/dashboard/agents/$id/analytics'
+    | '/dashboard/agents/$id/embed-test'
     | '/dashboard/agents/$id/settings'
     | '/dashboard/agents/$id/sources'
     | '/dashboard/agents/$id/'
@@ -462,6 +475,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardAgentsIdSettingsRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/agents/$id/embed-test': {
+      id: '/dashboard/agents/$id/embed-test'
+      path: '/agents/$id/embed-test'
+      fullPath: '/dashboard/agents/$id/embed-test'
+      preLoaderRoute: typeof DashboardAgentsIdEmbedTestRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/agents/$id/analytics': {
       id: '/dashboard/agents/$id/analytics'
       path: '/agents/$id/analytics'
@@ -496,6 +516,7 @@ interface DashboardRouteChildren {
   DashboardAgentsIdActionsRoute: typeof DashboardAgentsIdActionsRoute
   DashboardAgentsIdActivityRoute: typeof DashboardAgentsIdActivityRoute
   DashboardAgentsIdAnalyticsRoute: typeof DashboardAgentsIdAnalyticsRoute
+  DashboardAgentsIdEmbedTestRoute: typeof DashboardAgentsIdEmbedTestRoute
   DashboardAgentsIdSettingsRoute: typeof DashboardAgentsIdSettingsRoute
   DashboardAgentsIdSourcesRoute: typeof DashboardAgentsIdSourcesRoute
   DashboardAgentsIdIndexRoute: typeof DashboardAgentsIdIndexRoute
@@ -511,6 +532,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardAgentsIdActionsRoute: DashboardAgentsIdActionsRoute,
   DashboardAgentsIdActivityRoute: DashboardAgentsIdActivityRoute,
   DashboardAgentsIdAnalyticsRoute: DashboardAgentsIdAnalyticsRoute,
+  DashboardAgentsIdEmbedTestRoute: DashboardAgentsIdEmbedTestRoute,
   DashboardAgentsIdSettingsRoute: DashboardAgentsIdSettingsRoute,
   DashboardAgentsIdSourcesRoute: DashboardAgentsIdSourcesRoute,
   DashboardAgentsIdIndexRoute: DashboardAgentsIdIndexRoute,

@@ -40,35 +40,92 @@ export async function extractFromUrl(
 ): Promise<void> {
   try {
     const cheerio = await import("cheerio");
+    const baseUrl = new URL(url);
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000);
+    const visited = new Set<string>();
+    const toVisit = [url];
+    const pageContents: { url: string; title: string; content: string }[] = [];
+    const maxPages = 15;
 
-    let response;
-    try {
-      response = await fetch(url, { signal: controller.signal });
-    } finally {
-      clearTimeout(timeout);
+    while (toVisit.length > 0 && visited.size < maxPages) {
+      const currentUrl = toVisit.shift()!;
+      if (visited.has(currentUrl)) continue;
+      visited.add(currentUrl);
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000);
+
+      let response;
+      try {
+        response = await fetch(currentUrl, {
+          signal: controller.signal,
+          headers: { "User-Agent": "Mozilla/5.0 (compatible; BotbaseAI/1.0)" },
+        });
+      } catch {
+        clearTimeout(timeout);
+        continue;
+      } finally {
+        clearTimeout(timeout);
+      }
+
+      if (!response.ok) continue;
+
+      const html = await response.text();
+      const $ = cheerio.load(html);
+
+      const title =
+        $("title").first().text().trim() ||
+        $("h1").first().text().trim() ||
+        new URL(currentUrl).pathname;
+
+      $("script, style, noscript, iframe, svg").remove();
+      $("[hidden], [aria-hidden=true]").remove();
+      $("body *").after(" ");
+      const content = $("body").text().replace(/\s+/g, " ").trim();
+
+      if (content) {
+        pageContents.push({ url: currentUrl, title, content });
+      }
+
+      if (visited.size < maxPages) {
+        const links: string[] = [];
+        $("a[href]").each((_: number, el: cheerio.AnyNode) => {
+          const href = $(el).attr("href");
+          if (!href) return;
+          try {
+            const resolved = new URL(href, currentUrl);
+            if (
+              resolved.origin === baseUrl.origin &&
+              resolved.protocol.startsWith("http") &&
+              !visited.has(resolved.href) &&
+              !toVisit.includes(resolved.href) &&
+              !resolved.href.match(/\.(pdf|zip|png|jpg|jpeg|gif|svg|mp4|mp3|avi)$/i) &&
+              !resolved.href.includes("#")
+            ) {
+              links.push(resolved.href);
+            }
+          } catch {}
+        });
+        toVisit.push(...links);
+      }
     }
 
-    if (!response.ok) {
-      throw new ExternalServiceError(
-        `URL ${url}`,
-        `Failed to fetch URL (HTTP ${response.status})`,
-      );
+    if (pageContents.length === 0) {
+      throw new ValidationError(`No content could be extracted from: ${url}`);
     }
 
-    const html = await response.text();
-    const $ = cheerio.load(html);
+    const combined = pageContents
+      .map(
+        (p, i) =>
+          `--- PAGE ${i + 1}: ${p.title} ---\nURL: ${p.url}\n\n${p.content}`,
+      )
+      .join("\n\n");
 
-    $("script, style, nav, footer, header").remove();
-    const content = $("body").text().replace(/\s+/g, " ").trim();
-
-    if (!content) {
-      throw new ValidationError(`No content extracted from URL: ${url}`);
-    }
-
-    await processContent(chatbotId, sourceId, content, { url });
+    await processContent(chatbotId, sourceId, combined, {
+      url,
+      pagesCrawled: pageContents.length,
+      urls: pageContents.map((p) => p.url),
+    });
   } catch (error) {
     throw handleServerError(error, "extractFromUrl");
   }
@@ -126,10 +183,8 @@ async function processContent(
   try {
     embeddings = await createEmbeddings(chunks);
   } catch (error) {
-    console.error("[processContent] Embedding failed, using zero vectors as fallback:", error);
-    const dim = 768;
-    embeddings = chunks.map(() => new Array(dim).fill(0));
-    await supabase.from("sources").update({ status: "trained" }).eq("id", sourceId).then(() => {}).catch(() => {});
+    console.error("[processContent] Embedding failed:", error);
+    throw error;
   }
 
   const rows = chunks.map((chunk, i) => ({

@@ -188,6 +188,50 @@ async function handlePlaygroundChat(botId: string, request: Request): Promise<Re
 
 const widgetPathRe = /^\/api\/widget\/([^/]+)\/(config|chat)$/;
 const playgroundPathRe = /^\/api\/playground\/([^/]+)\/chat$/;
+const debugSearchRe = /^\/api\/debug\/search\/([^/]+)$/;
+
+async function handleDebugSearch(botId: string, request: Request): Promise<Response> {
+  try {
+    const admin = getAdminClient();
+    const url = new URL(request.url);
+    const testQuery = url.searchParams.get("q") || "services";
+
+    const { count: embedCount, error: countErr } = await admin
+      .from("embeddings")
+      .select("*", { count: "exact", head: true })
+      .eq("chatbot_id", botId);
+
+    const { data: sampleEmbeds, error: sampleErr } = await admin
+      .from("embeddings")
+      .select("id, content, chatbot_id")
+      .eq("chatbot_id", botId)
+      .limit(3);
+
+    const { data: sources, error: srcErr } = await admin
+      .from("sources")
+      .select("id, name, type, status")
+      .eq("chatbot_id", botId);
+
+    let testSearchResult = null;
+    try {
+      const { searchSimilarChunks } = await import("./lib/rag/search");
+      testSearchResult = await searchSimilarChunks(botId, testQuery, 0.3, 5);
+    } catch (err) {
+      testSearchResult = { error: err instanceof Error ? err.message : String(err) };
+    }
+
+    return jsonResponse({
+      embedCount: countErr ? `Error: ${countErr.message}` : embedCount,
+      sampleEmbeds: sampleErr ? `Error: ${sampleErr.message}` : sampleEmbeds,
+      testQuery,
+      testSearchResult,
+      sources: srcErr ? `Error: ${srcErr.message}` : sources,
+    });
+  } catch (err) {
+    console.error("[debugSearch] Error:", err);
+    return jsonResponse({ error: "Internal server error" }, 500);
+  }
+}
 
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
@@ -195,6 +239,11 @@ export default {
       const url = new URL(request.url);
       const widgetMatch = url.pathname.match(widgetPathRe);
       const playgroundMatch = url.pathname.match(playgroundPathRe);
+      const debugSearchMatch = url.pathname.match(debugSearchRe);
+
+      if (debugSearchMatch && request.method === "GET") {
+        return await handleDebugSearch(debugSearchMatch[1], request);
+      }
 
       if (playgroundMatch && request.method === "POST") {
         return await handlePlaygroundChat(playgroundMatch[1], request);

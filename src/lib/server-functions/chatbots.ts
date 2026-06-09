@@ -50,16 +50,16 @@ export const getChatbot = createServerFn({ method: "GET" })
   });
 
 export const createChatbot = createServerFn({ method: "POST" })
-  .inputValidator(
-    z.object({
-      name: z.string().min(1).max(100),
-      instructions: z.string().optional(),
-      model: z.string().optional(),
-      language: z.string().optional(),
-      status: z.enum(["draft", "live"]).optional(),
-      widget_config: z.record(z.unknown()).optional(),
-    }),
-  )
+    .inputValidator(
+      z.object({
+        name: z.string().min(1).max(100),
+        instructions: z.string().optional(),
+        model: z.string().optional(),
+        language: z.string().optional(),
+        status: z.enum(["draft", "live"]).optional(),
+        widget_config: z.record(z.unknown()).optional(),
+      }),
+    )
   .handler(async ({ data }) => {
     try {
       const supabase = await createClient();

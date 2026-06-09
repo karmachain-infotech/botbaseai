@@ -76,7 +76,15 @@ export async function streamChat(
   const chunks = await searchSimilarChunks(req.chatbotId, req.message);
   const context = chunks.map((c) => c.content).join("\n\n");
 
-  const systemInstruction = `${bot.instructions || "You are a helpful customer support assistant."}\n\nRelevant context:\n${context || "No relevant context found."}\n\nIf you have relevant context, use it to answer. Otherwise, say you don't have enough information.`;
+  const botName = bot.name || "Support Agent";
+  const instructions = bot.instructions || "";
+
+  const systemInstruction = `You are ${botName}, a customer support AI agent. Never say you are an AI model, a large language model, or that you were trained by Google. You represent this business only.
+
+${instructions ? `=== COMPANY INFORMATION & GUIDELINES ===\n${instructions}\n\n` : ""}=== KNOWLEDGE BASE CONTEXT ===
+${context || "No relevant context retrieved from the knowledge base."}
+
+Answer questions using ALL of the information above. First use the COMPANY INFORMATION & GUIDELINES section, then the KNOWLEDGE BASE CONTEXT. If neither contains enough information to answer the question, say "I don't have enough information about that" - do NOT make up answers.`;
 
   const geminiHistory = (history ?? []).map((m) => ({
     role: m.role === "assistant" ? "model" as const : "user" as const,
@@ -91,22 +99,40 @@ export async function streamChat(
     console.error("[streamChat] Failed to save user message:", err);
   });
 
+  const modelsToTry = [bot.model, "gemini-2.0-flash", "gemini-1.5-flash"];
+
   const startTime = Date.now();
   let streamResult;
   let geminiError: unknown;
-  try {
-    const model = genAI.getGenerativeModel({
-      model: bot.model,
-      systemInstruction,
-    });
-    streamResult = await model.generateContentStream({
-      contents: [
-        ...geminiHistory,
-        { role: "user", parts: [{ text: req.message }] },
-      ],
-    });
-  } catch (err) {
-    geminiError = err;
+
+  for (const modelName of modelsToTry) {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const model = genAI.getGenerativeModel({
+          model: modelName,
+          systemInstruction,
+        });
+        streamResult = await model.generateContentStream({
+          contents: [
+            ...geminiHistory,
+            { role: "user", parts: [{ text: req.message }] },
+          ],
+        });
+        break;
+      } catch (err) {
+        const isRateLimit = err && typeof err === "object" && "status" in err && (err as { status: number }).status === 429;
+        if (isRateLimit && attempt < 2) {
+          const delay = (attempt + 1) * 2000;
+          console.error(`[streamChat] Model ${modelName} rate limited, retrying in ${delay}ms (attempt ${attempt + 1}/3):`, err);
+          await new Promise((r) => setTimeout(r, delay));
+          continue;
+        }
+        geminiError = err;
+        console.error(`[streamChat] Model ${modelName} failed:`, err);
+        break;
+      }
+    }
+    if (streamResult) break;
   }
 
   let fullContent = "";

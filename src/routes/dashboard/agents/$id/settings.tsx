@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Save, Trash2, Bot, Globe, Shield, Palette, AlertTriangle, Code } from "lucide-react";
+import { toast } from "sonner";
+import { ArrowLeft, Save, Trash2, Bot, Shield, Palette, AlertTriangle, Code } from "lucide-react";
 import { getChatbot, updateChatbot, deleteChatbot } from "@/lib/server-functions/chatbots";
 import type { Chatbot } from "@/types/database";
 
@@ -24,7 +25,6 @@ function AgentSettings() {
   const [agent, setAgent] = useState<Chatbot | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>("general");
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
   const mountedRef = useRef(true);
 
@@ -66,7 +66,6 @@ function AgentSettings() {
 
   async function handleSave() {
     setSaving(true);
-    setSaved(false);
     setError("");
 
     try {
@@ -83,11 +82,10 @@ function AgentSettings() {
         },
       });
 
-      setSaved(true);
-      setTimeout(() => { if (mountedRef.current) setSaved(false); }, 2000);
+      toast.success("Settings saved");
     } catch (err) {
       console.error("Failed to save settings:", err);
-      setError("Failed to save changes. Please try again.");
+      toast.error("Failed to save changes");
     } finally {
       setSaving(false);
     }
@@ -101,7 +99,7 @@ function AgentSettings() {
       navigate({ to: "/dashboard" });
     } catch (err) {
       console.error("Failed to delete agent:", err);
-      setError("Failed to delete agent. Please try again.");
+      toast.error("Failed to delete agent");
       setDeleting(false);
     }
   }
@@ -129,7 +127,7 @@ function AgentSettings() {
         <button onClick={handleSave} disabled={saving}
           className="inline-flex items-center gap-2 rounded-lg bg-gradient-brand px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-60">
           <Save className="h-4 w-4" />
-          {saving ? "Saving..." : saved ? "Saved!" : "Save changes"}
+          {saving ? "Saving..." : "Save changes"}
         </button>
       </div>
 
@@ -180,6 +178,7 @@ function AgentSettings() {
                 <select value={language} onChange={(e) => setLanguage(e.target.value)}
                   className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary">
                   <option value="en">English</option>
+                  <option value="hi">Hindi (हिन्दी)</option>
                   <option value="es">Spanish</option>
                   <option value="fr">French</option>
                   <option value="de">German</option>

@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
+import { toast } from "sonner";
 import { ArrowLeft, FileText, Globe, Type, HelpCircle, Trash2, Upload, RefreshCw, CheckCircle, XCircle, Clock } from "lucide-react";
-import { listSources, addSource, deleteSource } from "@/lib/server-functions/sources";
+import { listSources, addSource, deleteSource, retrainSource } from "@/lib/server-functions/sources";
 import type { Source, SourceType } from "@/types/database";
 
 export const Route = createFileRoute("/dashboard/agents/$id/sources")({
@@ -81,6 +82,7 @@ function AgentSources() {
       setUrlInput("");
       setTextInput("");
       setFileInput(null);
+      toast.success("Source added, training started");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to add source";
       setError(message);
@@ -94,9 +96,26 @@ function AgentSources() {
     try {
       await deleteSource({ data: { chatbotId: id, sourceId } });
       setSources((prev) => prev.filter((s) => s.id !== sourceId));
+      toast.success("Source deleted");
     } catch (err) {
       console.error("Failed to delete source:", err);
-      alert("Failed to delete source. Please try again.");
+      toast.error("Failed to delete source");
+    }
+  }
+
+  async function handleRetrain(sourceId: string) {
+    const retraining = toast.loading("Retraining source...");
+    try {
+      await retrainSource({ data: { sourceId } });
+      setSources((prev) =>
+        prev.map((s) => (s.id === sourceId ? { ...s, status: "processing" as const } : s))
+      );
+      toast.dismiss(retraining);
+      toast.success("Source queued for retraining");
+      setTimeout(loadSources, 3000);
+    } catch (err) {
+      toast.dismiss(retraining);
+      toast.error("Retraining failed");
     }
   }
 
@@ -209,25 +228,34 @@ function AgentSources() {
             const config = sourceTypeConfig[source.type] ?? { label: source.type, icon: FileText };
             return (
               <div key={source.id} className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
-                <div className="flex items-center gap-3">
-                  <config.icon className="h-5 w-5 text-primary" />
-                  <div>
-                    <p className="text-sm font-medium">{source.name}</p>
+                <div className="flex items-center gap-3 min-w-0">
+                  <config.icon className="h-5 w-5 text-primary shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{source.name}</p>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <span>{config.label}</span>
                       <span>·</span>
                       {statusIcon(source.status)}
-                      <span>{source.status}</span>
+                      <span className={source.status === "failed" ? "text-destructive" : ""}>{source.status}</span>
                       {source.file_size && (
                         <><span>·</span><span>{(source.file_size / 1024).toFixed(1)} KB</span></>
                       )}
                     </div>
                   </div>
                 </div>
-                <button onClick={() => handleDelete(source.id)}
-                  className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive">
-                  <Trash2 className="h-4 w-4" />
-                </button>
+                <div className="flex items-center gap-1 shrink-0">
+                  {(source.status === "failed" || source.status === "pending") && (
+                    <button onClick={() => handleRetrain(source.id)}
+                      className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                      title="Retrain source">
+                      <RefreshCw className="h-4 w-4" />
+                    </button>
+                  )}
+                  <button onClick={() => handleDelete(source.id)}
+                    className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive">
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
             );
           })

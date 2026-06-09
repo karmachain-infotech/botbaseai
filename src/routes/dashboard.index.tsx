@@ -1,11 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
+import { toast } from "sonner";
 import {
   Bot, Plus, Pencil, BarChart3, Code2, Trash2,
-  Clock, MessageSquare,
+  MessageSquare, Settings, FileText, Zap,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { listChatbots, deleteChatbot } from "@/lib/server-functions/chatbots";
+import { createClient } from "@/lib/supabase/client";
 import type { Chatbot } from "@/types/database";
 
 export const Route = createFileRoute("/dashboard/")({
@@ -41,15 +43,29 @@ function DashboardHome() {
     try {
       const bots = await listChatbots();
       if (!mountedRef.current) return;
-      setAgents(bots as unknown as Chatbot[]);
+      const typedBots = bots as unknown as Chatbot[];
+      setAgents(typedBots);
 
       let totalMsgs = 0;
-      for (const bot of bots as unknown as Chatbot[]) {
+      let totalSrcs = 0;
+      for (const bot of typedBots) {
         totalMsgs += bot.message_count ?? 0;
       }
 
+      try {
+        const supabase = createClient();
+        const botIds = typedBots.map((b) => b.id);
+        if (botIds.length > 0) {
+          const { count: srcCount } = await supabase
+            .from("sources")
+            .select("id", { count: "exact", head: true })
+            .in("chatbot_id", botIds);
+          totalSrcs = srcCount ?? 0;
+        }
+      } catch { /* sources count is best-effort */ }
+
       if (mountedRef.current) {
-        setStats(prev => ({ ...prev, totalMessages: totalMsgs }));
+        setStats(prev => ({ ...prev, totalMessages: totalMsgs, totalSources: totalSrcs }));
       }
     } catch (err) {
       console.error("Failed to load agents:", err);
@@ -64,9 +80,10 @@ function DashboardHome() {
     try {
       await deleteChatbot({ data: { id: agentId } });
       setAgents((prev) => prev.filter((a) => a.id !== agentId));
+      toast.success("Agent deleted");
     } catch (err) {
       console.error("Failed to delete agent:", err);
-      alert("Failed to delete agent. Please try again.");
+      toast.error("Failed to delete agent");
     }
   }
 
@@ -113,14 +130,18 @@ function DashboardHome() {
 
       <div className="mt-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
         {[
-          { label: "Total messages", value: stats.totalMessages.toLocaleString() },
-          { label: "Avg response time", value: stats.avgResponseTime > 0 ? `${(stats.avgResponseTime / 1000).toFixed(1)}s` : "—" },
-          { label: "Active agents", value: agents.filter(a => a.status === "live").length.toString() },
-          { label: "Total agents", value: agents.length.toString() },
+          { label: "Total messages", value: stats.totalMessages.toLocaleString(), icon: MessageSquare, gradient: "from-purple-500/20 to-blue-500/20" },
+          { label: "Data sources", value: stats.totalSources.toString(), icon: FileText, gradient: "from-emerald-500/20 to-teal-500/20" },
+          { label: "Active agents", value: agents.filter(a => a.status === "live").length.toString(), icon: Zap, gradient: "from-amber-500/20 to-orange-500/20" },
+          { label: "Total agents", value: agents.length.toString(), icon: Bot, gradient: "from-primary/20 to-purple-500/20" },
         ].map((s) => (
-          <div key={s.label} className="rounded-xl border border-border bg-card p-5">
-            <p className="text-sm text-muted-foreground">{s.label}</p>
-            <p className="mt-2 text-2xl font-extrabold">{s.value}</p>
+          <div key={s.label} className="relative overflow-hidden rounded-xl border border-border bg-card p-5 transition-all hover:border-primary/40 hover:shadow-card">
+            <div className={`absolute inset-0 bg-gradient-to-br ${s.gradient} opacity-50`} />
+            <div className="relative flex items-start justify-between">
+              <p className="text-sm text-muted-foreground">{s.label}</p>
+              <s.icon className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <p className="relative mt-2 text-2xl font-extrabold">{s.value}</p>
           </div>
         ))}
       </div>
@@ -166,40 +187,56 @@ function DashboardHome() {
 
 function AgentCard({ agent, onDelete }: { agent: Chatbot; onDelete: (id: string) => void }) {
   return (
-    <div className="flex flex-col rounded-2xl border border-border bg-card p-6 transition-colors hover:border-primary/40">
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-3">
-          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-brand">
-            <Bot className="h-6 w-6 text-primary-foreground" />
-          </span>
-          <div>
-            <h3 className="font-semibold leading-tight">{agent.name}</h3>
-            <StatusBadge status={agent.status} />
-          </div>
+    <div className="group relative flex flex-col rounded-2xl border border-border bg-card p-6 transition-all hover:border-primary/40 hover:shadow-card">
+      {agent.status === "live" && (
+        <div className="absolute right-3 top-3 flex items-center gap-1.5 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+          <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+          Live
+        </div>
+      )}
+      <div className="flex items-start gap-3">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-brand shadow-sm">
+          <Bot className="h-6 w-6 text-primary-foreground" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <h3 className="font-semibold leading-tight truncate">{agent.name}</h3>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {agent.updated_at ? `Updated ${timeAgo(new Date(agent.updated_at))}` : "Just created"}
+          </p>
         </div>
       </div>
 
-      <div className="mt-5 space-y-2 text-sm text-muted-foreground">
-        <p className="flex items-center gap-2">
-          <MessageSquare className="h-4 w-4" /> {(agent.message_count ?? 0).toLocaleString()} messages
-        </p>
-        <p className="flex items-center gap-2">
-          <Clock className="h-4 w-4" /> {agent.updated_at ? timeAgo(new Date(agent.updated_at)) : "Never"}
-        </p>
+      <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
+        <div className="rounded-lg bg-secondary/50 px-3 py-2">
+          <p className="text-xs text-muted-foreground">Messages</p>
+          <p className="mt-0.5 font-semibold">{(agent.message_count ?? 0).toLocaleString()}</p>
+        </div>
+        <div className="rounded-lg bg-secondary/50 px-3 py-2">
+          <p className="text-xs text-muted-foreground">Status</p>
+          <p className="mt-0.5 font-semibold capitalize">{agent.status}</p>
+        </div>
       </div>
 
-      <div className="mt-5 grid grid-cols-4 gap-2 border-t border-border pt-4">
+      <div className="mt-auto grid grid-cols-6 gap-1 border-t border-border pt-4">
         <Link to={"/dashboard/agents/$id"} params={{ id: agent.id }}
           className="flex flex-col items-center gap-1 rounded-lg py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
-          <Pencil className="h-4 w-4" /> Edit
+          <Pencil className="h-4 w-4" /> Play
+        </Link>
+        <Link to={"/dashboard/agents/$id/embed-test"} params={{ id: agent.id }}
+          className="flex flex-col items-center gap-1 rounded-lg py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
+          <Code2 className="h-4 w-4" /> Widget
+        </Link>
+        <Link to={"/dashboard/agents/$id/sources"} params={{ id: agent.id }}
+          className="flex flex-col items-center gap-1 rounded-lg py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
+          <FileText className="h-4 w-4" /> Data
         </Link>
         <Link to={"/dashboard/agents/$id/analytics"} params={{ id: agent.id }}
           className="flex flex-col items-center gap-1 rounded-lg py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
-          <BarChart3 className="h-4 w-4" /> Analytics
+          <BarChart3 className="h-4 w-4" /> Stats
         </Link>
         <Link to={"/dashboard/agents/$id/settings"} params={{ id: agent.id }}
           className="flex flex-col items-center gap-1 rounded-lg py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
-          <Code2 className="h-4 w-4" /> Settings
+          <Settings className="h-4 w-4" /> Config
         </Link>
         <button onClick={() => onDelete(agent.id)}
           className="flex flex-col items-center gap-1 rounded-lg py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive">
@@ -207,21 +244,6 @@ function AgentCard({ agent, onDelete }: { agent: Chatbot; onDelete: (id: string)
         </button>
       </div>
     </div>
-  );
-}
-
-function StatusBadge({ status }: { status: Chatbot["status"] }) {
-  if (status === "live") {
-    return (
-      <span className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-primary/15 px-2 py-0.5 text-xs font-medium text-primary">
-        <span className="h-1.5 w-1.5 rounded-full bg-primary" /> Live
-      </span>
-    );
-  }
-  return (
-    <span className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-muted-foreground">
-      <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground" /> Draft
-    </span>
   );
 }
 

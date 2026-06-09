@@ -115,19 +115,20 @@ function DashboardAnalytics() {
 
       <div className="mt-8 grid grid-cols-2 gap-4 lg:grid-cols-3">
         {[
-          { label: "Total conversations", value: stats.totalConversations.toLocaleString(), icon: MessageSquare },
-          { label: "Total messages", value: stats.totalMessages.toLocaleString(), icon: MessageSquare },
-          { label: "Avg response time", value: stats.avgResponseTime > 0 ? `${(stats.avgResponseTime / 1000).toFixed(1)}s` : "—", icon: Clock },
-          { label: "All agents", value: stats.totalAgents.toString(), icon: Bot },
-          { label: "Live agents", value: stats.liveAgents.toString(), icon: TrendingUp },
-          { label: "Resolution rate", value: `${stats.resolvedRate}%`, icon: TrendingUp },
+          { label: "Total conversations", value: stats.totalConversations.toLocaleString(), icon: MessageSquare, gradient: "from-blue-500/20 to-indigo-500/20" },
+          { label: "Total messages", value: stats.totalMessages.toLocaleString(), icon: MessageSquare, gradient: "from-purple-500/20 to-pink-500/20" },
+          { label: "Avg response time", value: stats.avgResponseTime > 0 ? `${(stats.avgResponseTime / 1000).toFixed(1)}s` : "—", icon: Clock, gradient: "from-amber-500/20 to-orange-500/20" },
+          { label: "All agents", value: stats.totalAgents.toString(), icon: Bot, gradient: "from-primary/20 to-purple-500/20" },
+          { label: "Live agents", value: stats.liveAgents.toString(), icon: TrendingUp, gradient: "from-emerald-500/20 to-teal-500/20" },
+          { label: "Resolution rate", value: `${stats.resolvedRate}%`, icon: TrendingUp, gradient: "from-rose-500/20 to-red-500/20" },
         ].map((s) => (
-          <div key={s.label} className="rounded-xl border border-border bg-card p-5">
-            <div className="flex items-center justify-between">
+          <div key={s.label} className="relative overflow-hidden rounded-xl border border-border bg-card p-5 transition-all hover:border-primary/40 hover:shadow-card">
+            <div className={`absolute inset-0 bg-gradient-to-br ${s.gradient} opacity-50`} />
+            <div className="relative flex items-center justify-between">
               <p className="text-sm text-muted-foreground">{s.label}</p>
               <s.icon className="h-4 w-4 text-muted-foreground" />
             </div>
-            <p className="mt-2 text-2xl font-extrabold">{s.value}</p>
+            <p className="relative mt-2 text-2xl font-extrabold">{s.value}</p>
           </div>
         ))}
       </div>

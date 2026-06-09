@@ -1,10 +1,10 @@
--- Switch from OpenAI embedding dimensions (1536) to Gemini (768).
+-- Switch from Gemini embedding dimensions (768) to local MiniLM-L6 (384).
 -- Run this AFTER the 00001_schema migration.
 
-alter table embeddings alter column embedding type vector(768);
+alter table embeddings alter column embedding type vector(384);
 
 create or replace function match_embeddings(
-  query_embedding vector(768),
+  query_embedding vector(384),
   match_chatbot_id uuid,
   match_threshold float default 0.7,
   match_count int default 5
