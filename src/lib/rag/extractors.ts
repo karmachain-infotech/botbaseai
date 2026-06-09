@@ -33,6 +33,35 @@ export async function extractFromFile(
   }
 }
 
+function normalizeUrl(urlStr: string): string {
+  try {
+    const u = new URL(urlStr);
+    let path = u.pathname;
+    if (path !== "/" && path.endsWith("/")) path = path.slice(0, -1);
+    if (path === "") path = "/";
+    return `${u.protocol}//${u.hostname}${path}${u.search}`;
+  } catch {
+    return urlStr;
+  }
+}
+
+const COMMON_PATHS = [
+  "/about", "/about-us", "/about-us/",
+  "/contact", "/contact-us", "/contact-us/",
+  "/services", "/services/",
+  "/team", "/our-team", "/team/",
+  "/portfolio", "/work", "/portfolio/",
+  "/projects", "/projects/",
+  "/products", "/products/",
+  "/pricing", "/pricing/",
+  "/faq", "/faq/",
+  "/blog", "/blog/",
+  "/careers", "/careers/",
+  "/testimonials", "/testimonials/",
+  "/features", "/features/",
+  "/solutions", "/solutions/",
+];
+
 export async function extractFromUrl(
   chatbotId: string,
   sourceId: string,
@@ -41,38 +70,67 @@ export async function extractFromUrl(
   try {
     const cheerio = await import("cheerio");
     const baseUrl = new URL(url);
+    const baseOrigin = baseUrl.origin;
 
     const visited = new Set<string>();
-    const toVisit = [url];
+    const toVisit = new Set<string>();
     const pageContents: { url: string; title: string; content: string }[] = [];
     const maxPages = 15;
 
-    while (toVisit.length > 0 && visited.size < maxPages) {
-      const currentUrl = toVisit.shift()!;
-      if (visited.has(currentUrl)) continue;
-      visited.add(currentUrl);
+    toVisit.add(normalizeUrl(url));
 
+    async function tryFetch(pageUrl: string): Promise<{ html: string; $: cheerio.CheerioAPI } | null> {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 10000);
-
-      let response;
       try {
-        response = await fetch(currentUrl, {
+        const response = await fetch(pageUrl, {
           signal: controller.signal,
           headers: { "User-Agent": "Mozilla/5.0 (compatible; BotbaseAI/1.0)" },
         });
+        if (!response.ok) return null;
+        const html = await response.text();
+        return { html, $: cheerio.load(html) };
       } catch {
-        clearTimeout(timeout);
-        continue;
+        return null;
       } finally {
         clearTimeout(timeout);
       }
+    }
 
-      if (!response.ok) continue;
+    // Try sitemap.xml first
+    try {
+      const sitemapResult = await tryFetch(`${baseOrigin}/sitemap.xml`);
+      if (sitemapResult) {
+        const urls: string[] = [];
+        sitemapResult.$("url loc").each((_: number, el: cheerio.AnyNode) => {
+          const loc = sitemapResult.$(el).text().trim();
+          if (loc) urls.push(normalizeUrl(loc));
+        });
+        for (const u of urls) {
+          if (visited.size + toVisit.size < maxPages * 2) {
+            toVisit.add(u);
+          }
+        }
+      }
+    } catch {}
 
-      const html = await response.text();
-      const $ = cheerio.load(html);
+    // Add common paths as fallback
+    for (const path of COMMON_PATHS) {
+      if (visited.size + toVisit.size >= maxPages * 2) break;
+      const pageUrl = normalizeUrl(`${baseOrigin}${path}`);
+      toVisit.add(pageUrl);
+    }
 
+    while (toVisit.size > 0 && visited.size < maxPages) {
+      const currentUrl = normalizeUrl(toVisit.values().next().value);
+      toVisit.delete(currentUrl);
+      if (visited.has(currentUrl)) continue;
+      visited.add(currentUrl);
+
+      const result = await tryFetch(currentUrl);
+      if (!result) continue;
+
+      const { $ } = result;
       const title =
         $("title").first().text().trim() ||
         $("h1").first().text().trim() ||
@@ -87,26 +145,31 @@ export async function extractFromUrl(
         pageContents.push({ url: currentUrl, title, content });
       }
 
+      // Discover more links if we still have room
       if (visited.size < maxPages) {
         const links: string[] = [];
-        $("a[href]").each((_: number, el: cheerio.AnyNode) => {
+        $("a").each((_: number, el: cheerio.AnyNode) => {
           const href = $(el).attr("href");
           if (!href) return;
+          if (href.startsWith("javascript:") || href.startsWith("#") || href.startsWith("mailto:") || href.startsWith("tel:")) return;
           try {
             const resolved = new URL(href, currentUrl);
+            const normalized = normalizeUrl(resolved.href);
             if (
-              resolved.origin === baseUrl.origin &&
+              resolved.origin === baseOrigin &&
               resolved.protocol.startsWith("http") &&
-              !visited.has(resolved.href) &&
-              !toVisit.includes(resolved.href) &&
-              !resolved.href.match(/\.(pdf|zip|png|jpg|jpeg|gif|svg|mp4|mp3|avi)$/i) &&
-              !resolved.href.includes("#")
+              !visited.has(normalized) &&
+              !toVisit.has(normalized) &&
+              !normalized.match(/\.(pdf|zip|png|jpg|jpeg|gif|svg|mp4|mp3|avi|doc|docx|xls|xlsx)$/i) &&
+              !normalized.includes("#")
             ) {
-              links.push(resolved.href);
+              links.push(normalized);
             }
           } catch {}
         });
-        toVisit.push(...links);
+        for (const link of links) {
+          if (toVisit.size < maxPages * 2) toVisit.add(link);
+        }
       }
     }
 
