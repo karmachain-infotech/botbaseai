@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
 import { ArrowLeft, MessageSquare, Users, Clock, CheckCircle, TrendingUp, Star } from "lucide-react";
 import { getAnalytics } from "@/lib/server-functions/analytics";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute("/dashboard/agents/$id/analytics")({
   component: AgentAnalytics,
@@ -41,7 +42,17 @@ function AgentAnalytics() {
   }
 
   if (loading) {
-    return <div className="flex h-64 items-center justify-center"><p className="text-muted-foreground">Loading analytics...</p></div>;
+    return (
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="mt-4 h-8 w-40" />
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-28 rounded-xl" />
+          ))}
+        </div>
+      </div>
+    );
   }
 
   if (error) {

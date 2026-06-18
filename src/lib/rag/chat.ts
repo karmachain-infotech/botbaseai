@@ -1,7 +1,7 @@
-import { getGeminiClient } from "../gemini";
 import { getAdminClient } from "../supabase/admin";
 import { searchSimilarChunks } from "./search";
-import { handleServerError, NotFoundError, DatabaseError, ExternalServiceError } from "../errors";
+import { generateStream } from "../llm";
+import { handleServerError, NotFoundError, DatabaseError, ValidationError } from "../errors";
 import type { Chatbot } from "../../types/database";
 
 interface ChatRequest {
@@ -9,6 +9,7 @@ interface ChatRequest {
   message: string;
   sessionId: string;
   conversationId?: string;
+  chatbot?: Chatbot;
 }
 
 interface ChatResponse {
@@ -16,15 +17,46 @@ interface ChatResponse {
   content: string;
 }
 
+const responseCache = new Map<string, { content: string; expiry: number }>();
+const CACHE_TTL = 30_000;
+
+const greetingPattern = /^(hi|hello|hey|heyy|helloo|howdy|sup|yo)\W*$/i;
+const thanksPattern = /^(thanks|thank you|ty|thx|thankyou)\W*$/i;
+
+async function checkAndDeductCredit(userId: string): Promise<void> {
+  const supabase = getAdminClient();
+  // Use raw SQL for atomic check-and-deduct
+  const { error } = await supabase.rpc("deduct_message_credit", { p_user_id: userId } as never);
+  if (error) {
+    // If RPC doesn't exist, the error message may contain "function not found"
+    // fall back to the safe read-check-write pattern
+    const { data: user, error: fetchErr } = await supabase
+      .from("users")
+      .select("message_credits_used, message_credits_limit")
+      .eq("id", userId)
+      .single();
+    if (fetchErr || !user) return;
+    const u = user as unknown as { message_credits_used: number; message_credits_limit: number };
+    if (u.message_credits_used >= u.message_credits_limit) {
+      throw new ValidationError("Message credits exhausted. Please upgrade your plan.");
+    }
+    const { error: updateErr } = await supabase
+      .from("users")
+      .update({ message_credits_used: u.message_credits_used + 1 } as never)
+      .eq("id", userId);
+    if (updateErr) {
+      console.error("[checkAndDeductCredit] Update failed:", updateErr.message);
+    }
+  }
+}
+
 export async function streamChat(
   req: ChatRequest,
   onChunk?: (text: string) => void,
 ): Promise<ChatResponse> {
   const supabase = getAdminClient();
-  const genAI = getGeminiClient();
 
-  let chatbotData: unknown;
-  try {
+  const bot: Chatbot = req.chatbot ?? await (async () => {
     const { data, error } = await supabase
       .from("chatbots")
       .select("*")
@@ -32,170 +64,123 @@ export async function streamChat(
       .single();
     if (error) throw new DatabaseError(error.message);
     if (!data) throw new NotFoundError("Chatbot");
-    chatbotData = data;
-  } catch (error) {
-    throw handleServerError(error, "streamChat:fetchBot");
-  }
+    return data as unknown as Chatbot;
+  })();
 
-  const bot = chatbotData as unknown as Chatbot;
+  // Check credit limit before processing and deduct immediately
+  await checkAndDeductCredit(bot.user_id);
 
   let conversationId = req.conversationId;
   if (!conversationId) {
-    try {
-      const { data: conv, error } = await supabase
-        .from("conversations")
-        .insert({
-          chatbot_id: req.chatbotId,
-          session_id: req.sessionId,
-        })
-        .select()
-        .single();
+    const { data: conv, error } = await supabase
+      .from("conversations")
+      .insert({ chatbot_id: req.chatbotId, session_id: req.sessionId } as never)
+      .select()
+      .single();
 
-      if (error) throw new DatabaseError(error.message);
-      if (!conv) throw new Error("Failed to create conversation");
-      conversationId = conv.id;
-    } catch (error) {
-      throw handleServerError(error, "streamChat:createConversation");
-    }
+    if (error) throw new DatabaseError(error.message);
+    if (!conv) throw new Error("Failed to create conversation");
+    conversationId = (conv as unknown as { id: string }).id;
   }
 
-  let history;
-  try {
-    const { data, error } = await supabase
+  // Fast-path: skip LLM for simple greetings/thanks on first message
+  if (greetingPattern.test(req.message)) {
+    await Promise.all([
+      supabase.from("messages").insert({ conversation_id: conversationId, role: "user", content: req.message } as never),
+      supabase.from("messages").insert({ conversation_id: conversationId, role: "assistant", content: "Hi there! 👋 Welcome! How can I help you today?" } as never),
+      supabase.from("chatbots").update({ message_count: (bot.message_count ?? 0) + 1 } as never).eq("id", req.chatbotId),
+    ]);
+    const greeting = "Hi there! 👋 Welcome! How can I help you today?";
+    onChunk?.(greeting);
+    return { conversationId: conversationId!, content: greeting };
+  }
+
+  if (thanksPattern.test(req.message)) {
+    await Promise.all([
+      supabase.from("messages").insert({ conversation_id: conversationId, role: "user", content: req.message } as never),
+      supabase.from("messages").insert({ conversation_id: conversationId, role: "assistant", content: "You're welcome! 😊 Happy to help. Let me know if you need anything else!" } as never),
+      supabase.from("chatbots").update({ message_count: (bot.message_count ?? 0) + 1 } as never).eq("id", req.chatbotId),
+    ]);
+    const thanks = "You're welcome! 😊 Happy to help. Let me know if you need anything else!";
+    onChunk?.(thanks);
+    return { conversationId: conversationId!, content: thanks };
+  }
+
+  // Response cache: same message within 30s
+  const cacheKey = `${req.chatbotId}:${req.message}`;
+  const cached = responseCache.get(cacheKey);
+  if (cached && cached.expiry > Date.now()) {
+    onChunk?.(cached.content);
+    return { conversationId: conversationId!, content: cached.content };
+  }
+
+  const [history, chunks] = await Promise.all([
+    supabase
       .from("messages")
       .select("role, content")
       .eq("conversation_id", conversationId)
       .order("created_at", { ascending: true })
-      .limit(10);
-    if (error) throw new DatabaseError(error.message);
-    history = data;
-  } catch (error) {
-    throw handleServerError(error, "streamChat:fetchHistory");
-  }
+      .limit(3)
+      .then(({ data, error }) => {
+        if (error) throw new DatabaseError(error.message);
+        return (data ?? []) as unknown as { role: string; content: string }[];
+      }),
+    searchSimilarChunks(req.chatbotId, req.message),
+  ]);
 
-  const chunks = await searchSimilarChunks(req.chatbotId, req.message);
-  const context = chunks.map((c) => c.content).join("\n\n");
+  const context = chunks.map((c) => c.content).join("\n\n").slice(0, 800);
 
   const botName = bot.name || "Support Agent";
-  const instructions = bot.instructions || "";
+  const instructions = (bot.instructions || "").slice(0, 1000);
 
-  const systemInstruction = `You are ${botName}, a customer support AI agent. Never say you are an AI model, a large language model, or that you were trained by Google. You represent this business only.
+  const systemInstruction = `You are ${botName}, a friendly customer support rep for this company.
 
-${instructions ? `=== COMPANY INFORMATION & GUIDELINES ===\n${instructions}\n\n` : ""}=== KNOWLEDGE BASE CONTEXT ===
-${context || "No relevant context retrieved from the knowledge base."}
+${instructions ? `=== GUIDELINES ===\n${instructions}\n\n` : ""}=== CONTEXT ===
+${context || "No relevant context found."}
 
-Answer questions using ALL of the information above. First use the COMPANY INFORMATION & GUIDELINES section, then the KNOWLEDGE BASE CONTEXT. If neither contains enough information to answer the question, say "I don't have enough information about that" - do NOT make up answers.`;
+Keep responses short, warm, and helpful. Use emojis naturally.`;
 
-  const geminiHistory = (history ?? []).map((m) => ({
-    role: m.role === "assistant" ? "model" as const : "user" as const,
-    parts: [{ text: m.content }],
+  const msgs = (history ?? []).map((m) => ({
+    role: m.role as "user" | "assistant",
+    content: m.content.length > 500 ? m.content.slice(0, 500) + "..." : m.content,
   }));
 
-  supabase.from("messages").insert({
-    conversation_id: conversationId,
-    role: "user",
-    content: req.message,
-  }).then(() => {}).catch((err) => {
-    console.error("[streamChat] Failed to save user message:", err);
-  });
-
-  const modelsToTry = [bot.model, "gemini-2.0-flash", "gemini-1.5-flash"];
+  await supabase.from("messages").insert({ conversation_id: conversationId, role: "user", content: req.message } as never);
 
   const startTime = Date.now();
-  let streamResult;
-  let geminiError: unknown;
 
-  for (const modelName of modelsToTry) {
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        const model = genAI.getGenerativeModel({
-          model: modelName,
-          systemInstruction,
-        });
-        streamResult = await model.generateContentStream({
-          contents: [
-            ...geminiHistory,
-            { role: "user", parts: [{ text: req.message }] },
-          ],
-        });
-        break;
-      } catch (err) {
-        const isRateLimit = err && typeof err === "object" && "status" in err && (err as { status: number }).status === 429;
-        if (isRateLimit && attempt < 2) {
-          const delay = (attempt + 1) * 2000;
-          console.error(`[streamChat] Model ${modelName} rate limited, retrying in ${delay}ms (attempt ${attempt + 1}/3):`, err);
-          await new Promise((r) => setTimeout(r, delay));
-          continue;
-        }
-        geminiError = err;
-        console.error(`[streamChat] Model ${modelName} failed:`, err);
-        break;
-      }
-    }
-    if (streamResult) break;
-  }
+  const fullContent = await generateStream(
+    {
+      model: bot.model,
+      systemInstruction,
+      messages: [...msgs, { role: "user" as const, content: req.message }],
+    },
+    onChunk,
+  );
 
-  let fullContent = "";
-  if (streamResult) {
-    try {
-      for await (const chunk of streamResult.stream) {
-        const text = chunk.text();
-        if (text) {
-          fullContent += text;
-          onChunk?.(text);
-        }
-      }
-    } catch (streamError) {
-      console.error("[streamChat] Stream error:", streamError);
-    }
-  }
-
-  if (!fullContent) {
-    if (geminiError) {
-      console.error("[streamChat] Gemini chat API error:", geminiError);
-      const msg = "The AI service is currently unavailable. Check your GEMINI_API_KEY or try again later.";
-      fullContent = msg;
-      onChunk?.(msg);
-    } else {
-      fullContent = "Sorry, I couldn't generate a response.";
-      onChunk?.(fullContent);
-    }
-  }
+  responseCache.set(cacheKey, { content: fullContent, expiry: Date.now() + CACHE_TTL });
 
   const responseTime = Date.now() - startTime;
 
-  supabase.from("messages").insert({
-    conversation_id: conversationId,
-    role: "assistant",
-    content: fullContent,
-    tokens_used: fullContent.split(/\s+/).length,
-    response_time_ms: responseTime,
-    sources_used: chunks.map((c) => ({
-      sourceId: c.source_id,
-      chunkContent: c.content.slice(0, 200),
-    })),
-  }).then(() => {}).catch((err) => {
-    console.error("[streamChat] Failed to save assistant message:", err);
-  });
+  const newMsgCount = bot.message_count ?? 0;
 
-  supabase
-    .from("users")
-    .update({ message_credits_used: bot.message_count + 1 })
-    .eq("id", bot.user_id)
-    .then(() => {}).catch((err) => {
-      console.error("[streamChat] Failed to decrement credits:", err);
-    });
-
-  supabase
-    .from("chatbots")
-    .update({ message_count: (bot.message_count ?? 0) + 1 })
-    .eq("id", req.chatbotId)
-    .then(() => {}).catch((err) => {
-      console.error("[streamChat] Failed to increment message count:", err);
-    });
+  await Promise.all([
+    supabase.from("messages").insert({
+      conversation_id: conversationId,
+      role: "assistant",
+      content: fullContent,
+      tokens_used: fullContent.split(/\s+/).length,
+      response_time_ms: responseTime,
+      sources_used: chunks.map((c) => ({
+        sourceId: c.source_id,
+        chunkContent: c.content.slice(0, 200),
+      })),
+    } as never),
+    supabase.from("chatbots").update({ message_count: newMsgCount + 1 } as never).eq("id", req.chatbotId),
+  ]);
 
   return {
-    conversationId,
+    conversationId: conversationId!,
     content: fullContent,
   };
 }

@@ -18,6 +18,16 @@ export async function searchSimilarChunks(
 ): Promise<SearchResult[]> {
   const supabase = getAdminClient();
 
+  // Skip vector search for very short queries (embedding overhead isn't worth it)
+  const significantWords = query
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, "")
+    .split(/\s+/)
+    .filter((w) => w.length > 2);
+  if (significantWords.length < 3) {
+    return keywordSearch(supabase, chatbotId, query, count);
+  }
+
   // Try vector search first
   let queryEmbedding: number[];
   try {

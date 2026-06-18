@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { getAdminClient } from "../supabase/admin";
+import { createClient } from "../supabase/server";
 import { CREDIT_LIMITS } from "../stripe";
 import { DatabaseError, ValidationError, handleServerError } from "../errors";
 
@@ -91,6 +92,23 @@ export const googleAuth = createServerFn({ method: "POST" })
       return { url: data.url };
     } catch (error) {
       throw handleServerError(error, "googleAuth");
+    }
+  });
+
+export const refreshSession = createServerFn({ method: "GET" })
+  .handler(async () => {
+    try {
+      const supabase = await createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        // Force token refresh to trigger setAll (writes non-HttpOnly cookies)
+        await supabase.auth.setSession(session);
+        return { ok: true };
+      }
+      return { ok: false };
+    } catch (e) {
+      console.error("refreshSession error:", e);
+      return { ok: false };
     }
   });
 

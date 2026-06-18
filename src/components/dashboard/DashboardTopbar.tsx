@@ -1,5 +1,5 @@
 import { Link, useRouter } from "@tanstack/react-router";
-import { Bell, Search, LogOut, Settings } from "lucide-react";
+import { Bell, Search, LogOut, Settings, Menu } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import {
   DropdownMenu,
@@ -9,7 +9,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-export function DashboardTopbar() {
+interface TopbarProps {
+  onToggleSidebar?: () => void;
+}
+
+export function DashboardTopbar({ onToggleSidebar }: TopbarProps) {
   const { user, signOut } = useAuth();
   const router = useRouter();
   const initials = user?.email
@@ -23,11 +27,16 @@ export function DashboardTopbar() {
 
   return (
     <header className="flex h-16 items-center justify-between gap-4 border-b border-border bg-background/80 px-4 backdrop-blur-xl sm:px-6">
-      <Link to="/" className="flex items-center gap-2 md:hidden">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-brand font-bold text-primary-foreground">
-          B
-        </span>
-      </Link>
+      <div className="flex items-center gap-2 md:hidden">
+        <button onClick={onToggleSidebar} className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground" aria-label="Toggle sidebar">
+          <Menu className="h-5 w-5" />
+        </button>
+        <Link to="/" className="flex items-center gap-2">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-brand font-bold text-primary-foreground">
+            B
+          </span>
+        </Link>
+      </div>
 
       <div className="relative w-full max-w-md">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

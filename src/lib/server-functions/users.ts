@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { getAdminClient } from "../supabase/admin";
 import { createClient } from "../supabase/server";
+import { getStripeClient } from "../stripe";
 import { AuthError, DatabaseError, NotFoundError, ValidationError, handleServerError } from "../errors";
 
 export const getUserProfile = createServerFn({ method: "GET" })
@@ -92,6 +93,31 @@ export const deleteAccount = createServerFn({ method: "POST" })
       if (authError || !user) throw new AuthError();
 
       const admin = getAdminClient();
+      const stripe = getStripeClient();
+
+      // Cancel any active Stripe subscriptions and delete the customer
+      const { data: dbUser } = await admin
+        .from("users")
+        .select("stripe_customer_id")
+        .eq("id", user.id)
+        .single();
+
+      if (dbUser?.stripe_customer_id) {
+        try {
+          const subs = await stripe.subscriptions.list({
+            customer: dbUser.stripe_customer_id,
+            limit: 1,
+          });
+          for (const sub of subs.data) {
+            if (sub.status === "active" || sub.status === "trialing" || sub.status === "past_due") {
+              await stripe.subscriptions.cancel(sub.id);
+            }
+          }
+          await stripe.customers.del(dbUser.stripe_customer_id);
+        } catch (stripeError) {
+          console.error("[deleteAccount] Stripe cleanup failed:", stripeError);
+        }
+      }
 
       const tables = ["conversations", "messages", "sources", "embeddings", "ai_actions", "chatbots"];
       for (const table of tables) {

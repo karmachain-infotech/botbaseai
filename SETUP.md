@@ -12,9 +12,9 @@
 
 ```bash
 # Copy env vars
-cp .env.local.example .env.local
+cp .env.example .env
 
-# Fill in your .env.local values (see below)
+# Fill in your .env values (see below)
 
 # Install dependencies
 npm install
@@ -43,7 +43,7 @@ npm run dev
 
 1. Go to [platform.openai.com/api-keys](https://platform.openai.com/api-keys)
 2. Create a new API key
-3. Set `OPENAI_API_KEY` in `.env.local`
+3. Set `OPENAI_API_KEY` in `.env`
 
 ## 3. Stripe Setup
 
@@ -52,7 +52,7 @@ npm run dev
    - Hobby Monthly ($32) and Hobby Yearly ($384)
    - Standard Monthly ($120) and Standard Yearly ($1,440)
    - Pro Monthly ($400) and Pro Yearly ($4,800)
-3. Copy the Price IDs into `.env.local`:
+3. Copy the Price IDs into `.env`:
    ```
    NEXT_PUBLIC_STRIPE_PRICE_HOBBY_MONTHLY=price_xxx
    NEXT_PUBLIC_STRIPE_PRICE_HOBBY_YEARLY=price_xxx

@@ -148,8 +148,8 @@ export async function extractFromUrl(
       // Discover more links if we still have room
       if (visited.size < maxPages) {
         const links: string[] = [];
-        $("a").each((_: number, el: cheerio.AnyNode) => {
-          const href = $(el).attr("href");
+
+        function addNormalizedLink(href: string) {
           if (!href) return;
           if (href.startsWith("javascript:") || href.startsWith("#") || href.startsWith("mailto:") || href.startsWith("tel:")) return;
           try {
@@ -166,7 +166,25 @@ export async function extractFromUrl(
               links.push(normalized);
             }
           } catch {}
+        }
+
+        // Extract from <a> tags
+        $("a").each((_: number, el: cheerio.AnyNode) => {
+          addNormalizedLink($(el).attr("href"));
         });
+
+        // Extract from buttons: data-href, data-url, data-link attributes
+        $("button, [role=button]").each((_: number, el: cheerio.AnyNode) => {
+          const dataHref = $(el).attr("data-href") || $(el).attr("data-url") || $(el).attr("data-link");
+          addNormalizedLink(dataHref);
+          // Parse onclick for location navigation
+          const onclick = $(el).attr("onclick");
+          if (onclick) {
+            const match = onclick.match(/(?:window\.)?location(?:\.href)?\s*=\s*['"]([^'"]+)['"]/);
+            if (match) addNormalizedLink(match[1]);
+          }
+        });
+
         for (const link of links) {
           if (toVisit.size < maxPages * 2) toVisit.add(link);
         }

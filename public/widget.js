@@ -16,6 +16,13 @@
     messages: [],
     config: null,
     streaming: false,
+    thinking: false,
+    isTyping: false,
+    displayedText: "",
+    fullText: "",
+    typewriterTimer: null,
+    thinkingDotTimer: null,
+    dotCount: 1,
   };
 
   // Store session
@@ -41,17 +48,16 @@
     ".bb-msg { max-width: 85%; padding: 10px 14px; border-radius: 14px; font-size: 14px; line-height: 1.5; word-wrap: break-word; }" +
     ".bb-msg-user { align-self: flex-end; color: #fff; }" +
     ".bb-msg-bot { align-self: flex-start; }" +
-    ".bb-typing { display: flex; gap: 4px; padding: 10px 14px; align-self: flex-start; border-radius: 14px; }" +
-    ".bb-typing span { width: 8px; height: 8px; border-radius: 50%; animation: bbBounce 1.4s infinite; }" +
-    ".bb-typing span:nth-child(2) { animation-delay: 0.2s; }" +
-    ".bb-typing span:nth-child(3) { animation-delay: 0.4s; }" +
-    "@keyframes bbBounce { 0%,60%,100% { transform: translateY(0); } 30% { transform: translateY(-6px); } }" +
+    ".bb-thinking { align-self: flex-start; padding: 10px 14px; border-radius: 14px; font-size: 14px; line-height: 1.5; }" +
+    "#bb-cursor { animation: bbBlink 1s step-start infinite; }" +
+    "@keyframes bbBlink { 0%,50% { opacity: 1; } 51%,100% { opacity: 0; } }" +
     "#bb-input-area { padding: 12px 16px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; gap: 8px; }" +
     "#bb-input { flex: 1; border: none; border-radius: 10px; padding: 10px 14px; font-size: 14px; outline: none; }" +
     "#bb-send { border: none; border-radius: 10px; width: 40px; height: 40px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: opacity 0.2s; }" +
     "#bb-send:hover { opacity: 0.8; }" +
     "#bb-send svg { width: 18px; height: 18px; fill: white; }" +
-    "#bb-send:disabled { opacity: 0.5; cursor: default; }" +
+    "#bb-send:disabled { opacity: 0.5; cursor: not-allowed; }" +
+    "#bb-send:disabled:hover { opacity: 0.5; }" +
     "#bb-welcome { text-align: center; padding: 40px 20px; }" +
     "#bb-welcome p { margin-top: 8px; font-size: 14px; opacity: 0.7; }" +
     "@media (max-width: 480px) { #bb-window { right: 0; bottom: 0; width: 100%; max-width: 100%; height: 100%; max-height: 100%; border-radius: 0; } }";
@@ -180,25 +186,35 @@
     scrollToBottom();
   }
 
-  function showTyping() {
+  function showThinking() {
     var inner = document.getElementById("bb-messages-inner");
-    var typing = document.createElement("div");
-    typing.className = "bb-typing";
-    typing.id = "bb-typing";
-    var bg = state.config ? state.config.backgroundColor : "#1e1b4b";
-    typing.style.background = darken(bg, 15);
-    for (var i = 0; i < 3; i++) {
-      var dot = document.createElement("span");
-      dot.style.background = state.config ? state.config.primaryColor : "#7c3aed";
-      typing.appendChild(dot);
-    }
-    inner.appendChild(typing);
+    var welcome = document.getElementById("bb-welcome");
+    if (welcome) welcome.remove();
+
+    var el = document.createElement("div");
+    el.className = "bb-thinking";
+    el.id = "bb-thinking";
+    el.style.background = darken(state.config ? state.config.backgroundColor : "#1e1b4b", 15);
+    el.style.color = state.config ? state.config.textColor || "#fff" : "#fff";
+    el.textContent = "Thinking.";
+    inner.appendChild(el);
     scrollToBottom();
+
+    state.dotCount = 1;
+    state.thinkingDotTimer = setInterval(function () {
+      state.dotCount = state.dotCount < 3 ? state.dotCount + 1 : 1;
+      var thinkingEl = document.getElementById("bb-thinking");
+      if (thinkingEl) thinkingEl.textContent = "Thinking" + ".".repeat(state.dotCount);
+    }, 400);
   }
 
-  function hideTyping() {
-    var typing = document.getElementById("bb-typing");
-    if (typing) typing.remove();
+  function hideThinking() {
+    if (state.thinkingDotTimer) {
+      clearInterval(state.thinkingDotTimer);
+      state.thinkingDotTimer = null;
+    }
+    var el = document.getElementById("bb-thinking");
+    if (el) el.remove();
   }
 
   function scrollToBottom() {
@@ -206,15 +222,51 @@
     msgs.scrollTop = msgs.scrollHeight;
   }
 
+  function startTypewriter() {
+    state.isTyping = true;
+    state.displayedText = "";
+    state.typewriterTimer = setInterval(function () {
+      if (state.displayedText.length < state.fullText.length) {
+        state.displayedText = state.fullText.slice(0, state.displayedText.length + 1);
+        updateBotMessage();
+      } else {
+        clearInterval(state.typewriterTimer);
+        state.typewriterTimer = null;
+        state.isTyping = false;
+        updateBotMessage();
+        document.getElementById("bb-send").disabled = false;
+      }
+    }, 25);
+  }
+
+  function updateBotMessage() {
+    var el = document.getElementById("bb-msg-latest");
+    if (!el) return;
+    if (state.isTyping) {
+      el.textContent = state.displayedText;
+      var cursor = el.querySelector("#bb-cursor");
+      if (!cursor) {
+        cursor = document.createElement("span");
+        cursor.id = "bb-cursor";
+        el.appendChild(cursor);
+      }
+      cursor.textContent = "|";
+    } else {
+      el.textContent = state.fullText;
+    }
+    scrollToBottom();
+  }
+
   function sendMessage() {
     var input = document.getElementById("bb-input");
     var text = input.value.trim();
-    if (!text || state.streaming) return;
+    if (!text || state.thinking || state.isTyping) return;
 
     input.value = "";
     addMessage("user", text);
-    showTyping();
-    state.streaming = true;
+    state.thinking = true;
+    document.getElementById("bb-send").disabled = true;
+    showThinking();
 
     var url = BASE_URL + "/api/widget/" + BOT_ID + "/chat";
     fetch(url, {
@@ -228,20 +280,133 @@
     })
       .then(function (res) {
         if (!res.ok) throw new Error("Chat error");
-        return res.json();
-      })
-      .then(function (data) {
-        hideTyping();
-        state.conversationId = data.conversationId;
-        addMessage("bot", data.content || "");
-        state.streaming = false;
-        // Disable send button
-        document.getElementById("bb-send").disabled = false;
+
+        var reader = res.body && res.body.getReader ? res.body.getReader() : null;
+        if (!reader) {
+          return res.text().then(function (text) {
+            var lines = text.split("\n");
+            var fallbackContent = "";
+            for (var i = 0; i < lines.length; i++) {
+              var line = lines[i].trim();
+              if (!line) continue;
+              try {
+                var d = JSON.parse(line);
+                if (d.type === "meta") state.conversationId = d.conversationId;
+                else if (d.type === "chunk") fallbackContent += d.content;
+              } catch (e) {}
+            }
+            hideThinking();
+            state.thinking = false;
+            state.fullText = fallbackContent || "Sorry, I'm having trouble connecting. Please try again.";
+
+            var inner = document.getElementById("bb-messages-inner");
+            var botMsgEl = document.createElement("div");
+            botMsgEl.className = "bb-msg bb-msg-bot";
+            botMsgEl.id = "bb-msg-latest";
+            botMsgEl.style.background = darken(state.config ? state.config.backgroundColor : "#1e1b4b", 15);
+            botMsgEl.style.color = state.config ? state.config.textColor || "#fff" : "#fff";
+            inner.appendChild(botMsgEl);
+            scrollToBottom();
+
+            startTypewriter();
+          });
+        }
+
+        var decoder = new TextDecoder();
+        var buffer = "";
+        var botContent = "";
+
+        function readStream() {
+          reader.read().then(function (result) {
+            if (result.value) {
+              buffer += decoder.decode(result.value, { stream: true });
+            }
+
+            var lines = buffer.split("\n");
+            buffer = lines.pop() || "";
+
+            for (var i = 0; i < lines.length; i++) {
+              var line = lines[i].trim();
+              if (!line) continue;
+
+              try {
+                var data = JSON.parse(line);
+                if (data.type === "meta") {
+                  state.conversationId = data.conversationId;
+                } else if (data.type === "chunk") {
+                  botContent += data.content;
+                } else if (data.type === "done") {
+                  hideThinking();
+                  state.thinking = false;
+                  state.fullText = botContent;
+
+                  var inner = document.getElementById("bb-messages-inner");
+                  var botMsgEl = document.createElement("div");
+                  botMsgEl.className = "bb-msg bb-msg-bot";
+                  botMsgEl.id = "bb-msg-latest";
+                  botMsgEl.style.background = darken(state.config ? state.config.backgroundColor : "#1e1b4b", 15);
+                  botMsgEl.style.color = state.config ? state.config.textColor || "#fff" : "#fff";
+                  inner.appendChild(botMsgEl);
+                  scrollToBottom();
+
+                  startTypewriter();
+                  return;
+                } else if (data.type === "error") {
+                  hideThinking();
+                  state.thinking = false;
+                  addMessage("bot", data.content || "Sorry, something went wrong. Please try again.");
+                  document.getElementById("bb-send").disabled = false;
+                  scrollToBottom();
+                  return;
+                }
+              } catch (e) {
+                // skip malformed lines
+              }
+            }
+
+            if (result.done) {
+              hideThinking();
+              state.thinking = false;
+              state.fullText = botContent;
+
+              var inner = document.getElementById("bb-messages-inner");
+              var botMsgEl = document.createElement("div");
+              botMsgEl.className = "bb-msg bb-msg-bot";
+              botMsgEl.id = "bb-msg-latest";
+              botMsgEl.style.background = darken(state.config ? state.config.backgroundColor : "#1e1b4b", 15);
+              botMsgEl.style.color = state.config ? state.config.textColor || "#fff" : "#fff";
+              inner.appendChild(botMsgEl);
+              scrollToBottom();
+
+              startTypewriter();
+              return;
+            }
+
+            readStream();
+          }).catch(function () {
+            hideThinking();
+            state.thinking = false;
+            state.fullText = botContent || "Sorry, I'm having trouble connecting. Please try again.";
+
+            var inner = document.getElementById("bb-messages-inner");
+            var botMsgEl = document.createElement("div");
+            botMsgEl.className = "bb-msg bb-msg-bot";
+            botMsgEl.id = "bb-msg-latest";
+            botMsgEl.style.background = darken(state.config ? state.config.backgroundColor : "#1e1b4b", 15);
+            botMsgEl.style.color = state.config ? state.config.textColor || "#fff" : "#fff";
+            inner.appendChild(botMsgEl);
+            scrollToBottom();
+
+            startTypewriter();
+          });
+        }
+
+        readStream();
       })
       .catch(function () {
-        hideTyping();
+        hideThinking();
+        state.thinking = false;
         addMessage("bot", "Sorry, I'm having trouble connecting. Please try again.");
-        state.streaming = false;
         document.getElementById("bb-send").disabled = false;
       });
   }

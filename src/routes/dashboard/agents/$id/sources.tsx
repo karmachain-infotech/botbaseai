@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { ArrowLeft, FileText, Globe, Type, HelpCircle, Trash2, Upload, RefreshCw, CheckCircle, XCircle, Clock } from "lucide-react";
 import { listSources, addSource, deleteSource, retrainSource } from "@/lib/server-functions/sources";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { Source, SourceType } from "@/types/database";
 
 export const Route = createFileRoute("/dashboard/agents/$id/sources")({
@@ -220,7 +221,11 @@ function AgentSources() {
 
       <div className="mt-8 space-y-3">
         {loading ? (
-          <p className="text-center text-sm text-muted-foreground">Loading sources...</p>
+          <div className="space-y-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-16 rounded-xl" />
+            ))}
+          </div>
         ) : sources.length === 0 ? (
           <p className="text-center text-sm text-muted-foreground">No sources yet. Add one above.</p>
         ) : (

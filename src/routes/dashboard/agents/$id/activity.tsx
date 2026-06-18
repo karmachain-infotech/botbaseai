@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
 import { ArrowLeft, MessageSquare, CheckCircle, AlertTriangle, ArrowUpRight, Clock } from "lucide-react";
 import { listConversations, getConversation } from "@/lib/server-functions/conversations";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute("/dashboard/agents/$id/activity")({
   component: AgentActivity,
@@ -92,7 +93,11 @@ function AgentActivity() {
       <div className="mt-4 grid gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-2">
           {loading ? (
-            <p className="text-center text-sm text-muted-foreground py-8">Loading...</p>
+            <div className="space-y-2">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-20 rounded-xl" />
+              ))}
+            </div>
           ) : filtered.length === 0 ? (
             <p className="text-center text-sm text-muted-foreground py-8">No conversations found.</p>
           ) : (

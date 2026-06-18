@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
 import { ArrowLeft, Plus, Trash2, Zap, ToggleLeft, ToggleRight } from "lucide-react";
 import { listActions, createAction, updateAction, deleteAction } from "@/lib/server-functions/actions";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { Aiaction, AiactionMethod } from "@/types/database";
 
 export const Route = createFileRoute("/dashboard/agents/$id/actions")({
@@ -168,7 +169,11 @@ function AgentActions() {
 
       <div className="mt-6 space-y-3">
         {loading ? (
-          <p className="text-center text-sm text-muted-foreground py-8">Loading...</p>
+          <div className="space-y-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-20 rounded-xl" />
+            ))}
+          </div>
         ) : actions.length === 0 ? (
           <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border p-12 text-center">
             <Zap className="h-12 w-12 text-muted-foreground/40" />

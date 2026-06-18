@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Bot, BarChart3, MessageSquare, Plug, Settings, Sparkles } from "lucide-react";
+import { Bot, BarChart3, MessageSquare, Plug, Settings, Sparkles, X, Monitor } from "lucide-react";
 
 const navItems = [
   { label: "AI Agents", to: "/dashboard", icon: Bot },
@@ -7,20 +7,33 @@ const navItems = [
   { label: "Activity", to: "/dashboard/activity", icon: MessageSquare },
   { label: "Integrations", to: "/dashboard/integrations", icon: Plug },
   { label: "Settings", to: "/dashboard/settings", icon: Settings },
+  { label: "LiveDemo", to: "/dashboard/livedemo", icon: Monitor },
 ];
 
-export function DashboardSidebar() {
+interface SidebarProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
+export function DashboardSidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
-  return (
-    <aside className="hidden w-64 shrink-0 border-r border-border bg-sidebar md:flex md:flex-col">
-      <div className="flex h-16 items-center gap-2 border-b border-border px-6">
-        <Link to="/" className="flex items-center gap-2">
+  function handleNav() {
+    onClose?.();
+  }
+
+  const sidebarContent = (
+    <>
+      <div className="flex h-16 items-center justify-between gap-2 border-b border-border px-6">
+        <Link to="/" className="flex items-center gap-2" onClick={handleNav}>
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-brand font-bold text-primary-foreground">
             B
           </span>
           <span className="text-lg font-bold tracking-tight">BotbaseAI</span>
         </Link>
+        <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground md:hidden">
+          <X className="h-5 w-5" />
+        </button>
       </div>
 
       <nav className="flex-1 space-y-1 p-4">
@@ -33,6 +46,7 @@ export function DashboardSidebar() {
             <Link
               key={item.label}
               to={item.to}
+              onClick={handleNav}
               className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
                 isActive
                   ? "bg-sidebar-accent text-sidebar-accent-foreground"
@@ -49,12 +63,32 @@ export function DashboardSidebar() {
       <div className="p-4">
         <Link
           to="/pricing"
+          onClick={handleNav}
           className="flex items-center gap-3 rounded-lg bg-gradient-brand px-3 py-2.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
         >
           <Sparkles className="h-4 w-4" />
           Upgrade Plan
         </Link>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Desktop sidebar */}
+      <aside className="hidden w-64 shrink-0 border-r border-border bg-sidebar md:flex md:flex-col">
+        {sidebarContent}
+      </aside>
+
+      {/* Mobile drawer */}
+      {isOpen && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+          <aside className="relative flex w-72 max-w-[85vw] flex-col bg-sidebar shadow-xl">
+            {sidebarContent}
+          </aside>
+        </div>
+      )}
+    </>
   );
 }

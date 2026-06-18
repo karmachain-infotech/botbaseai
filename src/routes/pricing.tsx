@@ -1,10 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Fragment, useState } from "react";
+import { Fragment, useState, useEffect } from "react";
 import { Check, Minus, ArrowRight, ChevronDown } from "lucide-react";
 import { Navbar } from "@/components/marketing/Navbar";
 import { Footer } from "@/components/marketing/Footer";
-import { createClient } from "@/lib/supabase/client";
-import { createCheckoutSession } from "@/lib/server-functions/stripe";
+import { useAuth } from "@/lib/auth-context";
+import { createCheckoutSession, getPriceIds } from "@/lib/server-functions/stripe";
 
 export const Route = createFileRoute("/pricing")({
   head: () => ({
@@ -24,8 +24,16 @@ type Plan = {
   cta: string;
   popular?: boolean;
   features: string[];
-  priceId?: { monthly: string; yearly: string };
 };
+
+function getPlanPrice(name: string, interval: "monthly" | "yearly"): number | null {
+  if (name === "Free") return 0;
+  if (name === "Enterprise") return null;
+  const key = `VITE_PLAN_PRICE_${name.toUpperCase()}_${interval.toUpperCase()}`;
+  const raw = import.meta.env[key] as string | undefined;
+  const parsed = parseInt(raw ?? "", 10);
+  return isNaN(parsed) ? null : parsed;
+}
 
 const plans: Plan[] = [
   {
@@ -46,14 +54,10 @@ const plans: Plan[] = [
   },
   {
     name: "Hobby",
-    monthly: 32,
-    yearly: 384,
+    monthly: getPlanPrice("Hobby", "monthly"),
+    yearly: getPlanPrice("Hobby", "yearly"),
     blurb: "For individuals getting serious.",
     cta: "Subscribe",
-    priceId: {
-      monthly: "price_hobby_monthly",
-      yearly: "price_hobby_yearly",
-    },
     features: [
       "500 message credits/month",
       "1 agent, 5 AI Actions per agent",
@@ -67,15 +71,11 @@ const plans: Plan[] = [
   },
   {
     name: "Standard",
-    monthly: 120,
-    yearly: 1440,
+    monthly: getPlanPrice("Standard", "monthly"),
+    yearly: getPlanPrice("Standard", "yearly"),
     blurb: "For growing support teams.",
     cta: "Subscribe",
     popular: true,
-    priceId: {
-      monthly: "price_standard_monthly",
-      yearly: "price_standard_yearly",
-    },
     features: [
       "4,000 message credits/month",
       "1 agent, 8 AI Actions per agent",
@@ -90,14 +90,10 @@ const plans: Plan[] = [
   },
   {
     name: "Pro",
-    monthly: 400,
-    yearly: 4800,
+    monthly: getPlanPrice("Pro", "monthly"),
+    yearly: getPlanPrice("Pro", "yearly"),
     blurb: "For high-volume operations.",
     cta: "Subscribe",
-    priceId: {
-      monthly: "price_pro_monthly",
-      yearly: "price_pro_yearly",
-    },
     features: [
       "15,000 message credits/month",
       "1 agent, 12 AI Actions per agent",
@@ -170,19 +166,36 @@ const faqs = [
 
 function Pricing() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [yearly, setYearly] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [priceIds, setPriceIds] = useState<Record<string, { monthly: string; yearly: string }>>({});
+
+  useEffect(() => {
+    getPriceIds().then((ids) => {
+      const mapped: Record<string, { monthly: string; yearly: string }> = {};
+      for (const [plan, variants] of Object.entries(ids)) {
+        if (variants.monthly) mapped[plan] = variants;
+      }
+      setPriceIds(mapped);
+    }).catch(() => {});
+  }, []);
+
+  function getPlanPriceId(plan: Plan): { monthly: string; yearly: string } | undefined {
+    return priceIds[plan.name.toLowerCase()];
+  }
 
   async function handleSubscribe(plan: Plan) {
-    if (!plan.priceId) return;
+    const pid = getPlanPriceId(plan);
+    if (!pid) {
+      setError("Pricing config not loaded. Please try again.");
+      return;
+    }
     setError("");
 
-    const supabase = createClient();
-    const { data: { user }, error: userErr } = await supabase.auth.getUser();
-
-    if (userErr || !user) {
+    if (!user) {
       navigate({ to: "/signup" });
       return;
     }
@@ -190,10 +203,12 @@ function Pricing() {
     setLoading(plan.name);
 
     try {
-      const priceId = yearly ? plan.priceId.yearly : plan.priceId.monthly;
+      const priceId = yearly ? pid.yearly : pid.monthly;
       const result = await createCheckoutSession({
         data: {
           priceId,
+          plan: plan.name,
+          interval: yearly ? "yearly" : "monthly",
           successUrl: `${window.location.origin}/dashboard`,
           cancelUrl: `${window.location.origin}/pricing`,
         },
@@ -249,7 +264,7 @@ function Pricing() {
         {error && (
           <div className="mb-6 rounded-lg bg-destructive/10 p-3 text-sm text-destructive text-center">{error}</div>
         )}
-        <div className="grid gap-6 lg:grid-cols-5">
+        <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
           {plans.map((p) => (
             <div
               key={p.name}

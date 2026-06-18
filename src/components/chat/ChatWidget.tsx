@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Bot, X, Send, Loader2 } from "lucide-react";
+import { Bot, X, Send } from "lucide-react";
 
 function formatMarkdown(text: string): string {
   let html = text
@@ -16,6 +16,7 @@ function formatMarkdown(text: string): string {
   const result: string[] = [];
   let inList = false;
   let listType: "ul" | "ol" = "ul";
+  let blankCount = 0;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -23,23 +24,29 @@ function formatMarkdown(text: string): string {
     const numberedMatch = line.match(/^(\s*)\d+[.)]\s+(.+)/);
 
     if (bulletMatch) {
-      if (!inList) { result.push('<ul style="margin:4px 0;padding-left:20px">'); inList = true; listType = "ul"; }
+      if (!inList) { result.push('<ul style="margin:2px 0;padding-left:20px">'); inList = true; listType = "ul"; }
       result.push(`<li style="margin:2px 0">${bulletMatch[2]}</li>`);
+      blankCount = 0;
     } else if (numberedMatch) {
-      if (!inList) { result.push('<ol style="margin:4px 0;padding-left:20px">'); inList = true; listType = "ol"; }
+      if (!inList) { result.push('<ol style="margin:2px 0;padding-left:20px">'); inList = true; listType = "ol"; }
       result.push(`<li style="margin:2px 0">${numberedMatch[2]}</li>`);
+      blankCount = 0;
     } else {
       if (inList) { result.push(listType === "ul" ? "</ul>" : "</ol>"); inList = false; }
       if (line.trim() === "") {
-        result.push("<br/>");
+        blankCount++;
       } else {
-        result.push(`<p style="margin:4px 0">${line}</p>`);
+        if (blankCount > 0 && result.length > 0) {
+          result.push('<span style="display:block;height:6px"></span>');
+        }
+        blankCount = 0;
+        result.push(`<span>${line}</span>`);
       }
     }
   }
   if (inList) result.push(listType === "ul" ? "</ul>" : "</ol>");
 
-  return result.join("\n");
+  return result.join("");
 }
 
 interface ChatWidgetProps {
@@ -58,14 +65,41 @@ export function ChatWidget({ botId, botName, primaryColor, greeting }: ChatWidge
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const [streaming, setStreaming] = useState(false);
+  const [thinking, setThinking] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+  const [displayedText, setDisplayedText] = useState("");
+  const [fullText, setFullText] = useState("");
   const chatEnd = useRef<HTMLDivElement>(null);
   const sessionId = useRef("w_" + (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)) + "_" + Date.now());
   const conversationId = useRef<string | undefined>(undefined);
 
+  const [dotCount, setDotCount] = useState(1);
+  useEffect(() => {
+    if (!thinking) {
+      setDotCount(1);
+      return;
+    }
+    const interval = setInterval(() => {
+      setDotCount((prev) => (prev < 3 ? prev + 1 : 1));
+    }, 400);
+    return () => clearInterval(interval);
+  }, [thinking]);
+
+  useEffect(() => {
+    if (!isTyping) return;
+    if (displayedText.length < fullText.length) {
+      const timer = setTimeout(() => {
+        setDisplayedText(fullText.slice(0, displayedText.length + 1));
+      }, 25);
+      return () => clearTimeout(timer);
+    } else {
+      setIsTyping(false);
+    }
+  }, [isTyping, displayedText, fullText]);
+
   useEffect(() => {
     chatEnd.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, displayedText, thinking]);
 
   useEffect(() => {
     if (isOpen && messages.length === 0) {
@@ -74,13 +108,13 @@ export function ChatWidget({ botId, botName, primaryColor, greeting }: ChatWidge
   }, [isOpen]);
 
   async function handleSend() {
-    if (!input.trim() || streaming) return;
+    if (!input.trim() || thinking || isTyping) return;
 
     const msg = input.trim();
     setInput("");
     setMessages((prev) => [...prev, { role: "user", content: msg }]);
+    setThinking(true);
 
-    setStreaming(true);
     try {
       const res = await fetch("/api/playground/" + botId + "/chat", {
         method: "POST",
@@ -97,31 +131,28 @@ export function ChatWidget({ botId, botName, primaryColor, greeting }: ChatWidge
       const reader = res.body?.getReader();
       if (!reader) throw new Error("No response stream");
 
-      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
-
       const decoder = new TextDecoder();
-      let fullContent = "";
+      let accumulated = "";
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        fullContent += decoder.decode(value, { stream: true });
-        setMessages((prev) => {
-          const updated = [...prev];
-          updated[updated.length - 1] = { role: "assistant", content: fullContent };
-          return updated;
-        });
+        accumulated += decoder.decode(value, { stream: true });
       }
 
       conversationId.current = undefined;
+      setThinking(false);
+      setMessages((prev) => [...prev, { role: "assistant", content: accumulated }]);
+      setFullText(accumulated);
+      setDisplayedText("");
+      setIsTyping(true);
     } catch (err) {
       console.error("Widget chat error:", err);
+      setThinking(false);
       setMessages((prev) => [
         ...prev,
         { role: "assistant", content: "Sorry, something went wrong." },
       ]);
-    } finally {
-      setStreaming(false);
     }
   }
 
@@ -199,32 +230,57 @@ export function ChatWidget({ botId, botName, primaryColor, greeting }: ChatWidge
               background: "#f9fafb",
             }}
           >
-            {messages.map((m, i) => (
-              <div
-                key={i}
-                style={{
-                  display: "flex",
-                  justifyContent: m.role === "user" ? "flex-end" : "flex-start",
-                }}
-              >
+            {messages.map((m, i) => {
+              const isLastAssistant = i === messages.length - 1 && m.role === "assistant";
+              const showTyping = isLastAssistant && isTyping;
+              return (
                 <div
+                  key={i}
                   style={{
-                    maxWidth: "80%",
-                    padding: "10px 14px",
-                    borderRadius: m.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
-                    fontSize: "14px",
-                    lineHeight: "1.5",
-                    color: m.role === "user" ? "white" : "#1f2937",
-                    background: m.role === "user" ? primaryColor : "white",
-                    boxShadow: m.role === "user" ? "none" : "0 1px 2px rgba(0,0,0,0.05)",
-                    whiteSpace: "pre-wrap",
-                    wordBreak: "break-word",
+                    display: "flex",
+                    justifyContent: m.role === "user" ? "flex-end" : "flex-start",
                   }}
                 >
-                  <div dangerouslySetInnerHTML={{ __html: formatMarkdown(m.content) }} />
+                  <div
+                    style={{
+                      maxWidth: "80%",
+                      padding: "10px 14px",
+                      borderRadius: m.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
+                      fontSize: "14px",
+                      lineHeight: "1.6",
+                      color: m.role === "user" ? "white" : "#1f2937",
+                      background: m.role === "user" ? primaryColor : "white",
+                      boxShadow: m.role === "user" ? "none" : "0 1px 2px rgba(0,0,0,0.05)",
+                      wordBreak: "break-word",
+                    }}
+                  >
+                    {showTyping ? (
+                      <span>{displayedText}<span style={{ animation: "blink 1s step-start infinite" }}>|</span></span>
+                    ) : (
+                      <div dangerouslySetInnerHTML={{ __html: formatMarkdown(m.content) }} />
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+
+            {thinking && (
+              <div style={{ display: "flex", justifyContent: "flex-start" }}>
+                <div style={{
+                  maxWidth: "80%",
+                  padding: "10px 14px",
+                  borderRadius: "16px 16px 16px 4px",
+                  fontSize: "14px",
+                  lineHeight: "1.6",
+                  color: "#1f2937",
+                  background: "white",
+                  boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+                }}>
+                  Thinking{".".repeat(dotCount)}
                 </div>
               </div>
-            ))}
+            )}
+
             <div ref={chatEnd} />
           </div>
 
@@ -242,7 +298,7 @@ export function ChatWidget({ botId, botName, primaryColor, greeting }: ChatWidge
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend()}
               placeholder="Type a message..."
-              disabled={streaming}
+              disabled={thinking || isTyping}
               style={{
                 flex: 1,
                 border: "1px solid #d1d5db",
@@ -256,7 +312,7 @@ export function ChatWidget({ botId, botName, primaryColor, greeting }: ChatWidge
             />
             <button
               onClick={handleSend}
-              disabled={!input.trim() || streaming}
+              disabled={!input.trim() || thinking || isTyping}
               style={{
                 border: "none",
                 borderRadius: "10px",
@@ -264,17 +320,13 @@ export function ChatWidget({ botId, botName, primaryColor, greeting }: ChatWidge
                 cursor: "pointer",
                 color: "white",
                 background: primaryColor,
-                opacity: !input.trim() || streaming ? 0.6 : 1,
+                opacity: !input.trim() || thinking || isTyping ? 0.6 : 1,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              {streaming ? (
-                <Loader2 style={{ width: "16px", height: "16px", animation: "spin 1s linear infinite" }} />
-              ) : (
-                <Send style={{ width: "16px", height: "16px" }} />
-              )}
+              <Send style={{ width: "16px", height: "16px" }} />
             </button>
           </div>
         </div>

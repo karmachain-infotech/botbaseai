@@ -32,13 +32,11 @@ export function createClient() {
           return parseCookieString(cookieHeader);
         },
         setAll(cookiesToSet) {
-          for (const { name, value, options } of cookiesToSet) {
+          const cookies = cookiesToSet.map(({ name, value, options }) => {
             const maxAge = options?.maxAge ?? 3600;
-            setResponseHeader(
-              "set-cookie",
-              `${name}=${value}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}`,
-            );
-          }
+            return `${name}=${value}; Path=/; SameSite=Lax; Max-Age=${maxAge}`;
+          });
+          if (cookies.length > 0) setResponseHeader("set-cookie", cookies);
         },
       },
     },

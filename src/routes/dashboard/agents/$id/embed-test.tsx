@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { ArrowLeft, Copy, Check, Smartphone, Monitor, ExternalLink } from "lucide-react";
 import { getChatbot } from "@/lib/server-functions/chatbots";
 import { ChatWidget } from "@/components/chat/ChatWidget";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { Chatbot } from "@/types/database";
 
 export const Route = createFileRoute("/dashboard/agents/$id/embed-test")({
@@ -15,6 +16,8 @@ function EmbedTest() {
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [view, setView] = useState<"desktop" | "mobile">("desktop");
+  const [baseUrl, setBaseUrl] = useState("");
+  const [customCode, setCustomCode] = useState("");
   const mountedRef = useRef(true);
 
   useEffect(() => {
@@ -30,8 +33,15 @@ function EmbedTest() {
   const botName = agent?.name ?? "AI Assistant";
   const primaryColor = (agent?.widget_config as Record<string, unknown>)?.primaryColor as string ?? "#6366f1";
   const greeting = (agent?.widget_config as Record<string, unknown>)?.greeting as string ?? "Hi! How can I help you today?";
-  const embedCode = `<script src="https://botbaseai.com/widget.js" data-bot-id="${id}"></script>`;
-  const widgetUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/api/widget/${id}/config`;
+  const resolvedBase = (baseUrl.trim() || "https://botbaseai.com").replace(/\/+$/, "");
+  const autoCode = `<script src="${resolvedBase}/widget.js" data-bot-id="${id}" data-base-url="${resolvedBase}"></script>`;
+  const embedCode = customCode || autoCode;
+  const widgetUrl = `${resolvedBase}/api/widget/${id}/config`;
+
+  function handleBaseUrlChange(val: string) {
+    setBaseUrl(val);
+    setCustomCode("");
+  }
 
   async function handleCopy() {
     try {
@@ -43,9 +53,27 @@ function EmbedTest() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-6xl px-4 py-8">
-        <div className="flex h-64 items-center justify-center">
-          <p className="text-sm text-muted-foreground">Loading...</p>
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+        <Skeleton className="h-4 w-32" />
+        <div className="mt-4 flex items-center justify-between gap-4">
+          <div>
+            <Skeleton className="h-8 w-64" />
+            <Skeleton className="mt-1 h-4 w-48" />
+          </div>
+          <div className="flex gap-2">
+            <Skeleton className="h-10 w-24 rounded-lg" />
+            <Skeleton className="h-10 w-24 rounded-lg" />
+          </div>
+        </div>
+        <div className="mt-6 grid gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <Skeleton className="h-[600px] rounded-2xl" />
+          </div>
+          <div className="space-y-6">
+            <Skeleton className="h-40 rounded-2xl" />
+            <Skeleton className="h-32 rounded-2xl" />
+            <Skeleton className="h-32 rounded-2xl" />
+          </div>
         </div>
       </div>
     );
@@ -167,12 +195,25 @@ function EmbedTest() {
                 {copied ? <><Check className="h-3 w-3" /> Copied</> : <><Copy className="h-3 w-3" /> Copy</>}
               </button>
             </div>
-            <p className="mt-2 text-xs text-muted-foreground">
+            <div className="mt-3">
+              <label className="text-xs font-medium text-muted-foreground">Custom Domain (optional)</label>
+              <input
+                value={baseUrl}
+                onChange={(e) => handleBaseUrlChange(e.target.value)}
+                placeholder="https://your-domain.com"
+                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-primary"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">Leave empty to use the default BotbaseAI domain.</p>
+            </div>
+            <p className="mt-3 text-xs text-muted-foreground">
               Add this script before the closing <code className="rounded bg-secondary px-1 py-0.5">&lt;/body&gt;</code> tag.
             </p>
-            <pre className="mt-3 overflow-x-auto rounded-lg border border-border bg-background p-3 text-xs font-mono leading-relaxed">
-              {embedCode}
-            </pre>
+            <textarea
+              value={embedCode}
+              onChange={(e) => setCustomCode(e.target.value)}
+              rows={3}
+              className="mt-2 w-full resize-y rounded-lg border border-border bg-background p-3 text-xs font-mono leading-relaxed outline-none focus:border-primary"
+            />
           </div>
 
           {agent?.status !== "live" && (

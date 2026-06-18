@@ -361,7 +361,7 @@ function Landing() {
 
 function Section({ children }: { children: React.ReactNode }) {
   return (
-    <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">{children}</section>
+    <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20">{children}</section>
   );
 }
 

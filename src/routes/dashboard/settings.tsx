@@ -1,8 +1,9 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouter, Link } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
-import { User, CreditCard, Lock, Trash2, ArrowLeft, Check, X, AlertTriangle } from "lucide-react";
+import { User, CreditCard, Lock, Trash2, ArrowLeft, Check, X, AlertTriangle, ExternalLink } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { getUserProfile, updateProfile, changePassword, deleteAccount } from "@/lib/server-functions/users";
+import { createPortalSession, syncSubscription } from "@/lib/server-functions/stripe";
 import type { User as AppUser } from "@/types/database";
 
 export const Route = createFileRoute("/dashboard/settings")({
@@ -45,6 +46,7 @@ function AccountSettings() {
 
   async function loadProfile() {
     try {
+      await syncSubscription();
       const p = await getUserProfile();
       if (mountedRef.current) {
         setProfile(p as unknown as AppUser);
@@ -185,9 +187,40 @@ function AccountSettings() {
               <div className="h-full rounded-full bg-gradient-brand" style={{ width: `${pct}%` }} />
             </div>
           </div>
-          <a href="/pricing" className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline">
+          <Link to="/pricing" className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline">
             Upgrade plan
-          </a>
+          </Link>
+        </section>
+
+        {/* Billing */}
+        <section className="rounded-2xl border border-border bg-card p-6">
+          <div className="flex items-center gap-3">
+            <CreditCard className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-semibold">Billing</h2>
+          </div>
+          <div className="mt-4 space-y-4">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Current plan</span>
+              <span className="font-medium capitalize">{profile?.plan ?? "free"}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Credits</span>
+              <span>{creditsLimit.toLocaleString()} / month</span>
+            </div>
+            <button
+              onClick={async () => {
+                try {
+                  const result = await createPortalSession();
+                  if (result.url) window.location.href = result.url;
+                } catch {
+                  toast.error("Failed to open billing portal");
+                }
+              }}
+              className="inline-flex items-center gap-2 rounded-lg bg-gradient-brand px-4 py-2 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+            >
+              <ExternalLink className="h-4 w-4" /> Manage billing
+            </button>
+          </div>
         </section>
 
         {/* Change Password */}

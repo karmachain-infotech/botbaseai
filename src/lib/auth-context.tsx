@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 import { createClient, isSupabaseConfigured } from "./supabase/client";
 import type { User } from "@supabase/supabase-js";
+import { refreshSession } from "./server-functions/auth";
 
 interface AuthContextValue {
   user: User | null;
@@ -33,11 +34,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (error) {
           console.error("Auth session error:", error.message);
         }
-        if (!cancelled) {
-          setUser(data.session?.user ?? null);
+        if (data.session?.user) {
+          if (!cancelled) setUser(data.session.user);
+          return;
+        }
+
+        // Fallback: server-side session check (refreshes HttpOnly cookies to non-HttpOnly)
+        const result = await refreshSession();
+        if (result.ok && !cancelled) {
+          const { data: retry } = await supabase.auth.getSession();
+          if (!cancelled) setUser(retry.session?.user ?? null);
+        } else if (!cancelled) {
+          setUser(null);
         }
       } catch (err) {
         console.error("Failed to get auth session:", err);
+        if (!cancelled) setUser(null);
       } finally {
         if (!cancelled) setLoading(false);
       }

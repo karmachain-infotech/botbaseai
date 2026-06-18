@@ -5,6 +5,7 @@ import { renderErrorPage } from "./lib/error-page";
 import { getAdminClient } from "./lib/supabase/admin";
 import { streamChat } from "./lib/rag/chat";
 import { checkRateLimit } from "./lib/rate-limit";
+import { processStripeWebhook } from "./lib/server-functions/stripe";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -97,43 +98,86 @@ async function handleWidgetChat(botId: string, request: Request): Promise<Respon
     return jsonResponse({ error: "Message too long" }, 400);
   }
 
-  try {
-    const admin = getAdminClient();
+  const admin = getAdminClient();
 
-    const { data: chatbot, error } = await admin
-      .from("chatbots")
-      .select("id, status")
-      .eq("id", botId)
-      .single();
+  const { data: chatbot, error } = await admin
+    .from("chatbots")
+    .select("*")
+    .eq("id", botId)
+    .single();
 
-    if (error) {
-      console.error("[widgetChat] Supabase error:", error.message);
-      return jsonResponse({ error: "Failed to verify chatbot" }, 500);
-    }
-
-    if (!chatbot || chatbot.status !== "live") {
-      return jsonResponse({ error: "Chatbot not found or not live" }, 404);
-    }
-
-    const ipKey = `widget:${botId}:${sessionId}`;
-    if (!checkRateLimit(ipKey)) {
-      return jsonResponse({ error: "Rate limit exceeded" }, 429);
-    }
-    const result = await streamChat({
-      chatbotId: botId,
-      message,
-      sessionId,
-      conversationId: body.conversationId,
-    });
-
-    return jsonResponse({
-      conversationId: result.conversationId,
-      content: result.content,
-    });
-  } catch (err) {
-    console.error("Widget chat error:", err);
-    return jsonResponse({ error: "Internal server error" }, 500);
+  if (error) {
+    console.error("[widgetChat] Supabase error:", error.message);
+    return jsonResponse({ error: "Failed to verify chatbot" }, 500);
   }
+
+  if (!chatbot || chatbot.status !== "live") {
+    return jsonResponse({ error: "Chatbot not found or not live" }, 404);
+  }
+
+  const ipKey = `widget:${botId}:${sessionId}`;
+  if (!checkRateLimit(ipKey)) {
+    return jsonResponse({ error: "Rate limit exceeded" }, 429);
+  }
+
+  let conversationId = body.conversationId;
+  if (!conversationId) {
+    try {
+      const { data: conv, error: convErr } = await admin
+        .from("conversations")
+        .insert({ chatbot_id: botId, session_id: sessionId })
+        .select()
+        .single();
+      if (convErr) return jsonResponse({ error: "Failed to create conversation" }, 500);
+      conversationId = conv!.id;
+    } catch {
+      return jsonResponse({ error: "Internal server error" }, 500);
+    }
+  }
+
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      try {
+        controller.enqueue(encoder.encode(JSON.stringify({
+          type: "meta",
+          conversationId,
+        }) + "\n"));
+
+        await streamChat({
+          chatbotId: botId,
+          message,
+          sessionId,
+          conversationId,
+          chatbot,
+        }, (chunk) => {
+          controller.enqueue(encoder.encode(JSON.stringify({
+            type: "chunk",
+            content: chunk,
+          }) + "\n"));
+        });
+
+        controller.enqueue(encoder.encode(JSON.stringify({ type: "done" }) + "\n"));
+        controller.close();
+      } catch (err) {
+        console.error("[widgetChat] Error:", err);
+        try {
+          controller.enqueue(encoder.encode(JSON.stringify({
+            type: "error",
+            content: "Sorry, something went wrong. Please try again.",
+          }) + "\n"));
+          controller.close();
+        } catch { /* ignore */ }
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "content-type": "text/plain; charset=utf-8",
+      "access-control-allow-origin": "*",
+    },
+  });
 }
 
 async function handlePlaygroundChat(botId: string, request: Request): Promise<Response> {
@@ -170,10 +214,13 @@ async function handlePlaygroundChat(botId: string, request: Request): Promise<Re
         controller.close();
       } catch (err) {
         console.error("[playgroundChat] Error:", err);
-        try {
-          controller.enqueue(encoder.encode("Sorry, something went wrong. Please try again."));
-          controller.close();
-        } catch { /* ignore */ }
+const userMessage = err instanceof Error && "userMessage" in err
+  ? (err as { userMessage: string }).userMessage
+  : "Sorry, something went wrong. Please try again.";
+try {
+  controller.enqueue(encoder.encode(userMessage));
+  controller.close();
+} catch { /* ignore */ }
       }
     },
   });
@@ -189,6 +236,7 @@ async function handlePlaygroundChat(botId: string, request: Request): Promise<Re
 const widgetPathRe = /^\/api\/widget\/([^/]+)\/(config|chat)$/;
 const playgroundPathRe = /^\/api\/playground\/([^/]+)\/chat$/;
 const debugSearchRe = /^\/api\/debug\/search\/([^/]+)$/;
+const stripeWebhookRe = /^\/api\/stripe\/webhook$/;
 
 async function handleDebugSearch(botId: string, request: Request): Promise<Response> {
   try {
@@ -233,6 +281,22 @@ async function handleDebugSearch(botId: string, request: Request): Promise<Respo
   }
 }
 
+async function handleStripeWebhook(request: Request): Promise<Response> {
+  try {
+    const body = await request.text();
+    const signature = request.headers.get("stripe-signature");
+    if (!signature) {
+      return jsonResponse({ error: "Missing stripe-signature header" }, 400);
+    }
+    await processStripeWebhook(signature, body);
+    return jsonResponse({ received: true });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Webhook processing failed";
+    console.error("[stripeWebhook] Error:", message);
+    return jsonResponse({ error: message }, 400);
+  }
+}
+
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
@@ -240,6 +304,7 @@ export default {
       const widgetMatch = url.pathname.match(widgetPathRe);
       const playgroundMatch = url.pathname.match(playgroundPathRe);
       const debugSearchMatch = url.pathname.match(debugSearchRe);
+      const stripeWebhookMatch = url.pathname.match(stripeWebhookRe);
 
       if (debugSearchMatch && request.method === "GET") {
         return await handleDebugSearch(debugSearchMatch[1], request);
@@ -266,6 +331,10 @@ export default {
         }
 
         return jsonResponse({ error: "Method not allowed" }, 405);
+      }
+
+      if (stripeWebhookMatch && request.method === "POST") {
+        return await handleStripeWebhook(request);
       }
 
       const handler = await getServerEntry();

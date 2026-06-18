@@ -22,6 +22,7 @@ import { Route as CustomersRouteImport } from './routes/customers'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
 import { Route as DashboardSettingsRouteImport } from './routes/dashboard/settings'
+import { Route as DashboardLivedemoRouteImport } from './routes/dashboard/livedemo'
 import { Route as DashboardIntegrationsRouteImport } from './routes/dashboard/integrations'
 import { Route as DashboardCreateRouteImport } from './routes/dashboard.create'
 import { Route as DashboardAnalyticsRouteImport } from './routes/dashboard/analytics'
@@ -97,6 +98,11 @@ const DashboardIndexRoute = DashboardIndexRouteImport.update({
 const DashboardSettingsRoute = DashboardSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardLivedemoRoute = DashboardLivedemoRouteImport.update({
+  id: '/livedemo',
+  path: '/livedemo',
   getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardIntegrationsRoute = DashboardIntegrationsRouteImport.update({
@@ -177,6 +183,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/analytics': typeof DashboardAnalyticsRoute
   '/dashboard/create': typeof DashboardCreateRoute
   '/dashboard/integrations': typeof DashboardIntegrationsRoute
+  '/dashboard/livedemo': typeof DashboardLivedemoRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/agents/$id/actions': typeof DashboardAgentsIdActionsRoute
@@ -202,6 +209,7 @@ export interface FileRoutesByTo {
   '/dashboard/analytics': typeof DashboardAnalyticsRoute
   '/dashboard/create': typeof DashboardCreateRoute
   '/dashboard/integrations': typeof DashboardIntegrationsRoute
+  '/dashboard/livedemo': typeof DashboardLivedemoRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard': typeof DashboardIndexRoute
   '/dashboard/agents/$id/actions': typeof DashboardAgentsIdActionsRoute
@@ -229,6 +237,7 @@ export interface FileRoutesById {
   '/dashboard/analytics': typeof DashboardAnalyticsRoute
   '/dashboard/create': typeof DashboardCreateRoute
   '/dashboard/integrations': typeof DashboardIntegrationsRoute
+  '/dashboard/livedemo': typeof DashboardLivedemoRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/agents/$id/actions': typeof DashboardAgentsIdActionsRoute
@@ -257,6 +266,7 @@ export interface FileRouteTypes {
     | '/dashboard/analytics'
     | '/dashboard/create'
     | '/dashboard/integrations'
+    | '/dashboard/livedemo'
     | '/dashboard/settings'
     | '/dashboard/'
     | '/dashboard/agents/$id/actions'
@@ -282,6 +292,7 @@ export interface FileRouteTypes {
     | '/dashboard/analytics'
     | '/dashboard/create'
     | '/dashboard/integrations'
+    | '/dashboard/livedemo'
     | '/dashboard/settings'
     | '/dashboard'
     | '/dashboard/agents/$id/actions'
@@ -308,6 +319,7 @@ export interface FileRouteTypes {
     | '/dashboard/analytics'
     | '/dashboard/create'
     | '/dashboard/integrations'
+    | '/dashboard/livedemo'
     | '/dashboard/settings'
     | '/dashboard/'
     | '/dashboard/agents/$id/actions'
@@ -426,6 +438,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardSettingsRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/livedemo': {
+      id: '/dashboard/livedemo'
+      path: '/livedemo'
+      fullPath: '/dashboard/livedemo'
+      preLoaderRoute: typeof DashboardLivedemoRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/integrations': {
       id: '/dashboard/integrations'
       path: '/integrations'
@@ -511,6 +530,7 @@ interface DashboardRouteChildren {
   DashboardAnalyticsRoute: typeof DashboardAnalyticsRoute
   DashboardCreateRoute: typeof DashboardCreateRoute
   DashboardIntegrationsRoute: typeof DashboardIntegrationsRoute
+  DashboardLivedemoRoute: typeof DashboardLivedemoRoute
   DashboardSettingsRoute: typeof DashboardSettingsRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
   DashboardAgentsIdActionsRoute: typeof DashboardAgentsIdActionsRoute
@@ -527,6 +547,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardAnalyticsRoute: DashboardAnalyticsRoute,
   DashboardCreateRoute: DashboardCreateRoute,
   DashboardIntegrationsRoute: DashboardIntegrationsRoute,
+  DashboardLivedemoRoute: DashboardLivedemoRoute,
   DashboardSettingsRoute: DashboardSettingsRoute,
   DashboardIndexRoute: DashboardIndexRoute,
   DashboardAgentsIdActionsRoute: DashboardAgentsIdActionsRoute,

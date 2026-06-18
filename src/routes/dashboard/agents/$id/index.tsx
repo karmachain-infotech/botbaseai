@@ -1,7 +1,8 @@
 import { createFileRoute, Link, useRouterState } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
-import { Bot, Send, ArrowLeft, Sparkles, Loader2, BarChart3, Settings, FileText, Code2, Activity } from "lucide-react";
+import { Bot, Send, ArrowLeft, Sparkles, BarChart3, Settings, FileText, Code2, Activity } from "lucide-react";
 import { getChatbot } from "@/lib/server-functions/chatbots";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { Chatbot } from "@/types/database";
 
 export const Route = createFileRoute("/dashboard/agents/$id/")({
@@ -28,24 +29,40 @@ function AgentPlayground() {
   const [agent, setAgent] = useState<Pick<Chatbot, "name" | "status"> | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
-  const [streaming, setStreaming] = useState(false);
+  const [thinking, setThinking] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+  const [displayedText, setDisplayedText] = useState("");
+  const [fullText, setFullText] = useState("");
   const [error, setError] = useState("");
   const chatEnd = useRef<HTMLDivElement>(null);
 
+  const [dotCount, setDotCount] = useState(1);
   useEffect(() => {
-    let cancelled = false;
-    getChatbot({ data: { id } }).then((bot) => {
-      if (bot && !cancelled) setAgent(bot as Pick<Chatbot, "name" | "status">);
-    }).catch((err) => {
-      console.error("Failed to load agent:", err);
-      if (!cancelled) setError("Failed to load agent.");
-    });
-    return () => { cancelled = true; };
-  }, [id]);
+    if (!thinking) {
+      setDotCount(1);
+      return;
+    }
+    const interval = setInterval(() => {
+      setDotCount((prev) => (prev < 3 ? prev + 1 : 1));
+    }, 400);
+    return () => clearInterval(interval);
+  }, [thinking]);
+
+  useEffect(() => {
+    if (!isTyping) return;
+    if (displayedText.length < fullText.length) {
+      const timer = setTimeout(() => {
+        setDisplayedText(fullText.slice(0, displayedText.length + 1));
+      }, 25);
+      return () => clearTimeout(timer);
+    } else {
+      setIsTyping(false);
+    }
+  }, [isTyping, displayedText, fullText]);
 
   useEffect(() => {
     chatEnd.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, displayedText, thinking]);
 
   const sessionIdRef = useRef<string>("");
   function getSessionId() {
@@ -67,12 +84,12 @@ function AgentPlayground() {
   }
 
   async function handleSend() {
-    if (!input.trim() || streaming) return;
+    if (!input.trim() || thinking || isTyping) return;
 
     const msg = input.trim();
     setInput("");
     setMessages((prev) => [...prev, { role: "user", content: msg }]);
-    setStreaming(true);
+    setThinking(true);
     setError("");
 
     try {
@@ -90,31 +107,65 @@ function AgentPlayground() {
       const reader = response.body?.getReader();
       if (!reader) throw new Error("No response stream");
 
-      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
-
       const decoder = new TextDecoder();
-      let fullContent = "";
+      let accumulated = "";
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        fullContent += decoder.decode(value, { stream: true });
-        setMessages((prev) => {
-          const updated = [...prev];
-          updated[updated.length - 1] = { role: "assistant", content: fullContent };
-          return updated;
-        });
+        accumulated += decoder.decode(value, { stream: true });
       }
+
+      setThinking(false);
+      setMessages((prev) => [...prev, { role: "assistant", content: accumulated }]);
+      setFullText(accumulated);
+      setDisplayedText("");
+      setIsTyping(true);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Something went wrong";
       console.error("Chat error:", err);
+      setThinking(false);
       setMessages((prev) => [
         ...prev,
         { role: "assistant", content: "Sorry, something went wrong. Please try again." },
       ]);
-    } finally {
-      setStreaming(false);
     }
+  }
+
+  const [agentLoading, setAgentLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    getChatbot({ data: { id } }).then((bot) => {
+      if (bot && !cancelled) setAgent(bot as Pick<Chatbot, "name" | "status">);
+    }).catch((err) => {
+      console.error("Failed to load agent:", err);
+      if (!cancelled) setError("Failed to load agent.");
+    }).finally(() => {
+      if (!cancelled) setAgentLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [id]);
+
+  if (agentLoading) {
+    return (
+      <div className="mx-auto flex h-[calc(100vh-4rem)] max-w-4xl flex-col px-4 py-6">
+        <Skeleton className="h-4 w-32" />
+        <div className="mt-4 flex items-center gap-3">
+          <Skeleton className="h-10 w-10 rounded-xl" />
+          <div>
+            <Skeleton className="h-6 w-40" />
+            <Skeleton className="mt-1 h-4 w-16" />
+          </div>
+        </div>
+        <Skeleton className="mt-4 h-10 w-full rounded-xl" />
+        <Skeleton className="mt-4 flex-1 rounded-2xl" />
+        <div className="mt-4 flex gap-3">
+          <Skeleton className="h-12 flex-1 rounded-xl" />
+          <Skeleton className="h-12 w-24 rounded-xl" />
+        </div>
+      </div>
+    );
   }
 
   if (error) {
@@ -148,13 +199,13 @@ function AgentPlayground() {
         </div>
       </div>
 
-      <div className="mt-4 flex gap-1 rounded-xl border border-border bg-card p-1">
+      <div className="mt-4 flex gap-1 overflow-x-auto rounded-xl border border-border bg-card p-1">
         {agentTabs.map((tab) => {
           const tabTo = tab.to.replace("$id", id).replace(/\/$/, "");
           const isActive = pathname.replace(/\/$/, "") === tabTo;
           return (
             <Link key={tab.label} to={tab.to} params={{ id }}
-              className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+              className={`flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                 isActive
                   ? "bg-gradient-brand text-primary-foreground"
                   : "text-muted-foreground hover:text-foreground"
@@ -181,15 +232,31 @@ function AgentPlayground() {
         )}
 
         <div className="space-y-4">
-          {messages.map((m, i) => (
-            <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-              <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm ${
-                m.role === "user" ? "bg-gradient-brand text-primary-foreground" : "bg-secondary text-foreground"
-              }`}>
-                {m.content}
+          {messages.map((m, i) => {
+            const isLastAssistant = i === messages.length - 1 && m.role === "assistant";
+            const displayContent = isLastAssistant && isTyping ? displayedText : m.content;
+            return (
+              <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm ${
+                  m.role === "user" ? "bg-gradient-brand text-primary-foreground" : "bg-secondary text-foreground"
+                }`}>
+                  {displayContent}
+                  {isLastAssistant && isTyping && (
+                    <span className="animate-blink">|</span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+
+          {thinking && (
+            <div className="flex justify-start">
+              <div className="max-w-[80%] rounded-2xl bg-secondary px-4 py-3 text-sm text-foreground">
+                Thinking{".".repeat(dotCount)}
               </div>
             </div>
-          ))}
+          )}
+
           <div ref={chatEnd} />
         </div>
       </div>
@@ -197,11 +264,11 @@ function AgentPlayground() {
       <div className="mt-4 flex gap-3">
         <input value={input} onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSend()}
-          placeholder="Type a test message..." disabled={streaming}
+          placeholder="Type a test message..." disabled={thinking || isTyping}
           className="flex-1 rounded-xl border border-border bg-card px-4 py-3 text-sm outline-none transition-colors focus:border-primary" />
-        <button onClick={handleSend} disabled={!input.trim() || streaming}
+        <button onClick={handleSend} disabled={!input.trim() || thinking || isTyping}
           className="flex items-center gap-2 rounded-xl bg-gradient-brand px-5 py-3 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50">
-          {streaming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+          <Send className="h-4 w-4" />
           Send
         </button>
       </div>
