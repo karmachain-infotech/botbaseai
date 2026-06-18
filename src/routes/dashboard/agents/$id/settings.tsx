@@ -34,6 +34,8 @@ function AgentSettings() {
   const [model, setModel] = useState("gemini-2.5-flash");
   const [language, setLanguage] = useState("en");
   const [primaryColor, setPrimaryColor] = useState("#7c3aed");
+  const [backgroundColor, setBackgroundColor] = useState("#ffffff");
+  const [textColor, setTextColor] = useState("#1f2937");
   const [greeting, setGreeting] = useState("");
   const [allowedDomains, setAllowedDomains] = useState("");
   const [status, setStatus] = useState<"draft" | "live">("draft");
@@ -52,6 +54,8 @@ function AgentSettings() {
           setModel(data.model);
           setLanguage(data.language);
           setPrimaryColor((data.widget_config as { primaryColor?: string })?.primaryColor ?? "#7c3aed");
+          setBackgroundColor((data.widget_config as { backgroundColor?: string })?.backgroundColor ?? "#ffffff");
+          setTextColor((data.widget_config as { textColor?: string })?.textColor ?? "#1f2937");
           setGreeting((data.widget_config as { greeting?: string })?.greeting ?? "");
           setAllowedDomains((data.allowed_domains ?? []).join("\n"));
           setStatus(data.status);
@@ -78,7 +82,7 @@ function AgentSettings() {
           model,
           language,
           status,
-          widget_config: { ...(agent?.widget_config ?? {}), primaryColor, greeting } as Record<string, unknown>,
+          widget_config: { ...(agent?.widget_config ?? {}), primaryColor, backgroundColor, textColor, greeting } as Record<string, unknown>,
           allowed_domains: allowedDomains.split("\n").map((d) => d.trim()).filter(Boolean),
         },
       });
@@ -216,11 +220,27 @@ function AgentSettings() {
         {activeTab === "appearance" && (
           <div className="space-y-6">
             <div>
-              <label className="mb-1.5 block text-sm font-medium">Primary color</label>
+              <label className="mb-1.5 block text-sm font-medium">Primary color (header, bubble)</label>
               <div className="flex items-center gap-3">
                 <input type="color" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)}
                   className="h-10 w-10 rounded-lg border border-border cursor-pointer" />
                 <span className="text-sm text-muted-foreground">{primaryColor}</span>
+              </div>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium">Background color (chat window)</label>
+              <div className="flex items-center gap-3">
+                <input type="color" value={backgroundColor} onChange={(e) => setBackgroundColor(e.target.value)}
+                  className="h-10 w-10 rounded-lg border border-border cursor-pointer" />
+                <span className="text-sm text-muted-foreground">{backgroundColor}</span>
+              </div>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium">Text color</label>
+              <div className="flex items-center gap-3">
+                <input type="color" value={textColor} onChange={(e) => setTextColor(e.target.value)}
+                  className="h-10 w-10 rounded-lg border border-border cursor-pointer" />
+                <span className="text-sm text-muted-foreground">{textColor}</span>
               </div>
             </div>
             <div>

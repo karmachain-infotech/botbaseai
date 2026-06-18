@@ -94,6 +94,8 @@ function CreateAgentWizard() {
           status: "draft",
           widget_config: {
             primaryColor,
+            backgroundColor: "#ffffff",
+            textColor: "#1f2937",
             greeting,
             botName: name,
             bubbleIcon: "message",

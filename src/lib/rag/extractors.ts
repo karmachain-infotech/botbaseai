@@ -136,12 +136,21 @@ export async function extractFromUrl(
         $("h1").first().text().trim() ||
         new URL(currentUrl).pathname;
 
-      $("script, style, noscript, iframe, svg").remove();
+      $("script, style, iframe, svg").remove();
       $("[hidden], [aria-hidden=true]").remove();
       $("body *").after(" ");
-      const content = $("body").text().replace(/\s+/g, " ").trim();
+      let content = $("body").text().replace(/\s+/g, " ").trim();
 
-      if (content) {
+      if (!content || content.length < 50) {
+        const metaDesc = $("meta[name=description]").attr("content") || $("meta[property='og:description']").attr("content") || "";
+        const keywords = $("meta[name=keywords]").attr("content") || "";
+        const fallback = [title, metaDesc, keywords].filter(Boolean).join(" - ");
+        if (fallback && (!content || content.length < fallback.length)) {
+          content = fallback;
+        }
+      }
+
+      if (content && content.length >= 10) {
         pageContents.push({ url: currentUrl, title, content });
       }
 
@@ -156,7 +165,7 @@ export async function extractFromUrl(
             const resolved = new URL(href, currentUrl);
             const normalized = normalizeUrl(resolved.href);
             if (
-              resolved.origin === baseOrigin &&
+              (resolved.origin === baseOrigin || resolved.hostname.replace(/^www\./, "") === baseUrl.hostname.replace(/^www\./, "")) &&
               resolved.protocol.startsWith("http") &&
               !visited.has(normalized) &&
               !toVisit.has(normalized) &&
@@ -192,7 +201,9 @@ export async function extractFromUrl(
     }
 
     if (pageContents.length === 0) {
-      throw new ValidationError(`No content could be extracted from: ${url}`);
+      throw new ValidationError(
+        `No content could be extracted from: ${url}. This usually happens with JavaScript-rendered sites (React, Vue, etc.). Try adding the site content manually using the "Text" source type instead.`
+      );
     }
 
     const combined = pageContents
