@@ -1,12 +1,11 @@
 // @ts-nocheck
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { adminListAllChatbots, adminDeleteChatbot } from "@/lib/server-functions/admin";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { useState } from "react";
 import { Search, Eye, Trash2, Bot } from "lucide-react";
-import { Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/admin/chatbots")({
   component: AdminChatbots,
@@ -17,6 +16,8 @@ function AdminChatbots() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
+  const pathname = useRouterState({ select: s => s.location.pathname });
+  const isDetail = pathname !== "/admin/chatbots" && pathname.startsWith("/admin/chatbots");
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["admin-chatbots", search, statusFilter, page],
@@ -32,6 +33,8 @@ function AdminChatbots() {
     },
     onError: () => toast.error("Failed to delete chatbot"),
   });
+
+  if (isDetail) return <Outlet />;
 
   return (
     <div className="p-6">

@@ -114,7 +114,7 @@ function RootShell({ children }: { children: ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        <script src="http://192.168.1.4:8080/widget.js" data-bot-id="eda1e0ff-8093-4224-8ebd-da132267b1e0"></script>
+        <script src="http://192.168.1.8:8080/widget.js" data-bot-id="eda1e0ff-8093-4224-8ebd-da132267b1e0"></script>
         {children}
         <Scripts />
       </body>

@@ -4,7 +4,7 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "postinstall": "echo 'BotbaseAI installed'",
+    "postinstall": "node scripts/patch-tanstack-mjs.mjs",
     "dev": "vite dev",
     "build": "vite build",
     "build:dev": "vite build --mode development",
@@ -62,7 +62,7 @@
     "langchain": "^0.3.37",
     "lucide-react": "^0.575.0",
     "mammoth": "^1.12.0",
-    "pdf-parse": "^2.2.2",
+    "pdf-parse": "^1.1.4",
     "react": "^19.2.0",
     "react-day-picker": "^9.14.0",
     "react-dom": "^19.2.0",

@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   Bot,
   FileText,
@@ -58,6 +58,9 @@ function CreateAgentWizard() {
   const [sources, setSources] = useState<SourceType[]>([]);
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [textContent, setTextContent] = useState("");
+  const [qaContent, setQaContent] = useState("");
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Step 3
   const [systemPrompt, setSystemPrompt] = useState("");
@@ -79,6 +82,15 @@ function CreateAgentWizard() {
     setSources((prev) =>
       prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
     );
+  }
+
+  function fileToBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
   }
 
   async function handleCreate() {
@@ -115,6 +127,30 @@ function CreateAgentWizard() {
         await addSource({
           data: { chatbotId: agentId, type: "url", name: websiteUrl, content: websiteUrl },
         }).catch(console.error);
+      }
+
+      if (qaContent && sources.includes("qa")) {
+        await addSource({
+          data: { chatbotId: agentId, type: "qa", name: "Q&A Pairs", content: qaContent },
+        }).catch(console.error);
+      }
+
+      if (selectedFiles.length > 0 && sources.includes("files")) {
+        for (const file of selectedFiles) {
+          try {
+            const base64 = await fileToBase64(file);
+            await addSource({
+              data: {
+                chatbotId: agentId,
+                type: "file",
+                name: file.name,
+                fileBase64: base64.split(",")[1],
+              },
+            }).catch(console.error);
+          } catch (err) {
+            console.error("Failed to upload file:", file.name, err);
+          }
+        }
       }
 
       setCreatedId(agentId);
@@ -267,10 +303,22 @@ function CreateAgentWizard() {
             </div>
 
             {sources.includes("files") && (
-              <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-background p-6 text-center">
-                <Upload className="h-6 w-6 text-muted-foreground" />
-                <p className="text-sm font-medium">Drag & drop files here</p>
-                <p className="text-xs text-muted-foreground">PDF, DOCX, TXT up to 10MB each</p>
+              <div className="space-y-3">
+                <div onClick={() => fileInputRef.current?.click()}
+                  className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-background p-6 text-center transition-colors hover:border-primary/50">
+                  <Upload className="h-6 w-6 text-muted-foreground" />
+                  <p className="text-sm font-medium">{selectedFiles.length > 0 ? `${selectedFiles.length} file(s) selected` : "Click to select files"}</p>
+                  <p className="text-xs text-muted-foreground">PDF, DOCX, TXT up to 10MB each</p>
+                </div>
+                <input ref={fileInputRef} type="file" accept=".pdf,.docx,.txt" multiple className="hidden"
+                  onChange={(e) => setSelectedFiles(Array.from(e.target.files ?? []))} />
+                {selectedFiles.length > 0 && (
+                  <div className="space-y-1">
+                    {selectedFiles.map((f, i) => (
+                      <p key={i} className="text-xs text-muted-foreground">{f.name} ({(f.size / 1024).toFixed(1)} KB)</p>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
             {sources.includes("website") && (
@@ -288,6 +336,15 @@ function CreateAgentWizard() {
                 rows={4}
                 placeholder="Paste content for your agent to learn from..."
                 className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none transition-colors focus:border-primary"
+              />
+            )}
+            {sources.includes("qa") && (
+              <textarea
+                value={qaContent}
+                onChange={(e) => setQaContent(e.target.value)}
+                rows={6}
+                placeholder='[{"question": "What are your hours?", "answer": "We are open 9-5"}]'
+                className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-sm outline-none transition-colors focus:border-primary"
               />
             )}
           </div>
