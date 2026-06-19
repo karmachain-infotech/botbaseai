@@ -37,7 +37,7 @@
     "#bb-bubble { position: fixed; bottom: 20px; right: 20px; z-index: 2147483647; width: 60px; height: 60px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }" +
     "#bb-bubble:hover { transform: scale(1.05); }" +
     "#bb-bubble svg { width: 28px; height: 28px; fill: white; }" +
-    "#bb-window { position: fixed; bottom: 90px; right: 20px; z-index: 2147483646; width: 380px; max-width: calc(100vw - 40px); height: 600px; max-height: calc(100vh - 120px); border-radius: 16px; display: none; flex-direction: column; box-shadow: 0 10px 60px rgba(0,0,0,0.5); overflow: hidden; }" +
+    "#bb-window { position: fixed; bottom: 90px; right: 20px; z-index: 2147483646; width: 380px; max-width: calc(100vw - 40px); height: 600px; max-height: calc(100vh - 120px); border-radius: 16px; display: none; flex-direction: column; box-shadow: 0 10px 60px rgba(0,0,0,0.5); overflow: hidden; transform-origin: bottom right; transform: scale(0.8); opacity: 0; }" +
     "#bb-header { padding: 16px 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }" +
     "#bb-header img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; }" +
     "#bb-header-text { flex: 1; }" +
@@ -61,7 +61,17 @@
     "#bb-send:disabled:hover { opacity: 0.5; }" +
     "#bb-welcome { text-align: center!important; padding: 40px 20px!important; }" +
     "#bb-welcome p { margin-top: 8px!important; font-size: 14px!important; opacity: 0.7!important; }" +
-    "@media (max-width: 480px) { #bb-window { right: 0; bottom: 0; width: 100%; max-width: 100%; height: 100%; max-height: 100%; border-radius: 0; } }";
+    "@media (max-width: 480px) { #bb-window { right: 0; bottom: 0; width: 100%; max-width: 100%; height: 100%; max-height: 100%; border-radius: 0; } }" +
+    "#bb-bubble { transform-origin: center; }" +
+    "#bb-bubble::after { content: ''; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid var(--bb-primary, #7c3aed); animation: bbPing 3s ease-out infinite; pointer-events: none; }" +
+    "@keyframes bbPing { 0% { transform: scale(1); opacity: 0.6; } 100% { transform: scale(1.4); opacity: 0; } }" +
+    "#bb-window.bb-window-open { display: flex; animation: bbWindowIn 280ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }" +
+    "#bb-window.bb-window-closing { display: flex; animation: bbWindowOut 200ms ease-in forwards; }" +
+    "@keyframes bbWindowIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }" +
+    "@keyframes bbWindowOut { from { transform: scale(1); opacity: 1; } to { transform: scale(0.8); opacity: 0; } }" +
+    "#bb-window.bb-window-open #bb-welcome { animation: bbGreetingIn 320ms ease-out 150ms both; }" +
+    "@keyframes bbGreetingIn { from { transform: translateY(16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }" +
+    "@media (prefers-reduced-motion: reduce) { #bb-widget-container, #bb-widget-container * { animation: none !important; transition: none !important; } }";
 
   document.head.appendChild(style);
 
@@ -111,6 +121,7 @@
     setImportant(bubble, "justify-content", "center");
     setImportant(bubble, "box-shadow", "0 4px 20px rgba(0,0,0,0.3)");
     setImportant(bubble, "background", primary);
+    bubble.style.setProperty("--bb-primary", primary);
     bubble.innerHTML =
       '<svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12z"/><path d="M7 9h10v2H7zM7 12h7v2H7z"/></svg>';
     bubble.onclick = toggleWindow;
@@ -128,7 +139,6 @@
     setImportant(win, "height", "600px");
     setImportant(win, "max-height", "calc(100vh - 120px)");
     setImportant(win, "border-radius", "16px");
-    setImportant(win, "display", "none");
     setImportant(win, "flex-direction", "column");
     setImportant(win, "box-shadow", "0 10px 60px rgba(0,0,0,0.5)");
     setImportant(win, "overflow", "hidden");
@@ -205,15 +215,20 @@
     var win = document.getElementById("bb-window");
     var bubble = document.getElementById("bb-bubble");
     if (state.open) {
-      setImportant(win, "display", "flex");
+      win.classList.remove("bb-window-closing");
+      win.classList.add("bb-window-open");
       setImportant(bubble, "display", "none");
       setTimeout(function () {
         var inp = document.getElementById("bb-input");
         if (inp) inp.focus();
       }, 300);
     } else {
-      setImportant(win, "display", "none");
+      win.classList.remove("bb-window-open");
+      win.classList.add("bb-window-closing");
       setImportant(bubble, "display", "flex");
+      setTimeout(function () {
+        win.classList.remove("bb-window-closing");
+      }, 210);
     }
   }
 
