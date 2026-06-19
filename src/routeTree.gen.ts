@@ -19,14 +19,23 @@ import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as EnterpriseRouteImport } from './routes/enterprise'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CustomersRouteImport } from './routes/customers'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as DashboardSettingsRouteImport } from './routes/dashboard/settings'
 import { Route as DashboardLivedemoRouteImport } from './routes/dashboard/livedemo'
 import { Route as DashboardIntegrationsRouteImport } from './routes/dashboard/integrations'
 import { Route as DashboardCreateRouteImport } from './routes/dashboard.create'
 import { Route as DashboardAnalyticsRouteImport } from './routes/dashboard/analytics'
 import { Route as DashboardActivityRouteImport } from './routes/dashboard/activity'
+import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
+import { Route as AdminChatbotsRouteImport } from './routes/admin.chatbots'
+import { Route as AdminBillingRouteImport } from './routes/admin.billing'
+import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
+import { Route as AdminUsersIdRouteImport } from './routes/admin.users.$id'
+import { Route as AdminChatbotsIdRouteImport } from './routes/admin.chatbots.$id'
 import { Route as DashboardAgentsIdIndexRouteImport } from './routes/dashboard/agents/$id/index'
 import { Route as DashboardAgentsIdSourcesRouteImport } from './routes/dashboard/agents/$id/sources'
 import { Route as DashboardAgentsIdSettingsRouteImport } from './routes/dashboard/agents/$id/settings'
@@ -85,6 +94,11 @@ const CustomersRoute = CustomersRouteImport.update({
   path: '/customers',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -94,6 +108,11 @@ const DashboardIndexRoute = DashboardIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => DashboardRoute,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
 } as any)
 const DashboardSettingsRoute = DashboardSettingsRouteImport.update({
   id: '/settings',
@@ -124,6 +143,41 @@ const DashboardActivityRoute = DashboardActivityRouteImport.update({
   id: '/activity',
   path: '/activity',
   getParentRoute: () => DashboardRoute,
+} as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSettingsRoute = AdminSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminChatbotsRoute = AdminChatbotsRouteImport.update({
+  id: '/chatbots',
+  path: '/chatbots',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminBillingRoute = AdminBillingRouteImport.update({
+  id: '/billing',
+  path: '/billing',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAnalyticsRoute = AdminAnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminUsersIdRoute = AdminUsersIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AdminUsersRoute,
+} as any)
+const AdminChatbotsIdRoute = AdminChatbotsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AdminChatbotsRoute,
 } as any)
 const DashboardAgentsIdIndexRoute = DashboardAgentsIdIndexRouteImport.update({
   id: '/agents/$id/',
@@ -169,6 +223,7 @@ const DashboardAgentsIdActionsRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
   '/customers': typeof CustomersRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/enterprise': typeof EnterpriseRoute
@@ -179,13 +234,21 @@ export interface FileRoutesByFullPath {
   '/resources': typeof ResourcesRoute
   '/signup': typeof SignupRoute
   '/solutions': typeof SolutionsRoute
+  '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/billing': typeof AdminBillingRoute
+  '/admin/chatbots': typeof AdminChatbotsRouteWithChildren
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/users': typeof AdminUsersRouteWithChildren
   '/dashboard/activity': typeof DashboardActivityRoute
   '/dashboard/analytics': typeof DashboardAnalyticsRoute
   '/dashboard/create': typeof DashboardCreateRoute
   '/dashboard/integrations': typeof DashboardIntegrationsRoute
   '/dashboard/livedemo': typeof DashboardLivedemoRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
+  '/admin/': typeof AdminIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/admin/chatbots/$id': typeof AdminChatbotsIdRoute
+  '/admin/users/$id': typeof AdminUsersIdRoute
   '/dashboard/agents/$id/actions': typeof DashboardAgentsIdActionsRoute
   '/dashboard/agents/$id/activity': typeof DashboardAgentsIdActivityRoute
   '/dashboard/agents/$id/analytics': typeof DashboardAgentsIdAnalyticsRoute
@@ -205,13 +268,21 @@ export interface FileRoutesByTo {
   '/resources': typeof ResourcesRoute
   '/signup': typeof SignupRoute
   '/solutions': typeof SolutionsRoute
+  '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/billing': typeof AdminBillingRoute
+  '/admin/chatbots': typeof AdminChatbotsRouteWithChildren
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/users': typeof AdminUsersRouteWithChildren
   '/dashboard/activity': typeof DashboardActivityRoute
   '/dashboard/analytics': typeof DashboardAnalyticsRoute
   '/dashboard/create': typeof DashboardCreateRoute
   '/dashboard/integrations': typeof DashboardIntegrationsRoute
   '/dashboard/livedemo': typeof DashboardLivedemoRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
+  '/admin': typeof AdminIndexRoute
   '/dashboard': typeof DashboardIndexRoute
+  '/admin/chatbots/$id': typeof AdminChatbotsIdRoute
+  '/admin/users/$id': typeof AdminUsersIdRoute
   '/dashboard/agents/$id/actions': typeof DashboardAgentsIdActionsRoute
   '/dashboard/agents/$id/activity': typeof DashboardAgentsIdActivityRoute
   '/dashboard/agents/$id/analytics': typeof DashboardAgentsIdAnalyticsRoute
@@ -223,6 +294,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
   '/customers': typeof CustomersRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/enterprise': typeof EnterpriseRoute
@@ -233,13 +305,21 @@ export interface FileRoutesById {
   '/resources': typeof ResourcesRoute
   '/signup': typeof SignupRoute
   '/solutions': typeof SolutionsRoute
+  '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/billing': typeof AdminBillingRoute
+  '/admin/chatbots': typeof AdminChatbotsRouteWithChildren
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/users': typeof AdminUsersRouteWithChildren
   '/dashboard/activity': typeof DashboardActivityRoute
   '/dashboard/analytics': typeof DashboardAnalyticsRoute
   '/dashboard/create': typeof DashboardCreateRoute
   '/dashboard/integrations': typeof DashboardIntegrationsRoute
   '/dashboard/livedemo': typeof DashboardLivedemoRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
+  '/admin/': typeof AdminIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/admin/chatbots/$id': typeof AdminChatbotsIdRoute
+  '/admin/users/$id': typeof AdminUsersIdRoute
   '/dashboard/agents/$id/actions': typeof DashboardAgentsIdActionsRoute
   '/dashboard/agents/$id/activity': typeof DashboardAgentsIdActivityRoute
   '/dashboard/agents/$id/analytics': typeof DashboardAgentsIdAnalyticsRoute
@@ -252,6 +332,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
     | '/customers'
     | '/dashboard'
     | '/enterprise'
@@ -262,13 +343,21 @@ export interface FileRouteTypes {
     | '/resources'
     | '/signup'
     | '/solutions'
+    | '/admin/analytics'
+    | '/admin/billing'
+    | '/admin/chatbots'
+    | '/admin/settings'
+    | '/admin/users'
     | '/dashboard/activity'
     | '/dashboard/analytics'
     | '/dashboard/create'
     | '/dashboard/integrations'
     | '/dashboard/livedemo'
     | '/dashboard/settings'
+    | '/admin/'
     | '/dashboard/'
+    | '/admin/chatbots/$id'
+    | '/admin/users/$id'
     | '/dashboard/agents/$id/actions'
     | '/dashboard/agents/$id/activity'
     | '/dashboard/agents/$id/analytics'
@@ -288,13 +377,21 @@ export interface FileRouteTypes {
     | '/resources'
     | '/signup'
     | '/solutions'
+    | '/admin/analytics'
+    | '/admin/billing'
+    | '/admin/chatbots'
+    | '/admin/settings'
+    | '/admin/users'
     | '/dashboard/activity'
     | '/dashboard/analytics'
     | '/dashboard/create'
     | '/dashboard/integrations'
     | '/dashboard/livedemo'
     | '/dashboard/settings'
+    | '/admin'
     | '/dashboard'
+    | '/admin/chatbots/$id'
+    | '/admin/users/$id'
     | '/dashboard/agents/$id/actions'
     | '/dashboard/agents/$id/activity'
     | '/dashboard/agents/$id/analytics'
@@ -305,6 +402,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/admin'
     | '/customers'
     | '/dashboard'
     | '/enterprise'
@@ -315,13 +413,21 @@ export interface FileRouteTypes {
     | '/resources'
     | '/signup'
     | '/solutions'
+    | '/admin/analytics'
+    | '/admin/billing'
+    | '/admin/chatbots'
+    | '/admin/settings'
+    | '/admin/users'
     | '/dashboard/activity'
     | '/dashboard/analytics'
     | '/dashboard/create'
     | '/dashboard/integrations'
     | '/dashboard/livedemo'
     | '/dashboard/settings'
+    | '/admin/'
     | '/dashboard/'
+    | '/admin/chatbots/$id'
+    | '/admin/users/$id'
     | '/dashboard/agents/$id/actions'
     | '/dashboard/agents/$id/activity'
     | '/dashboard/agents/$id/analytics'
@@ -333,6 +439,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRouteWithChildren
   CustomersRoute: typeof CustomersRoute
   DashboardRoute: typeof DashboardRouteWithChildren
   EnterpriseRoute: typeof EnterpriseRoute
@@ -417,6 +524,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CustomersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -430,6 +544,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard/'
       preLoaderRoute: typeof DashboardIndexRouteImport
       parentRoute: typeof DashboardRoute
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/dashboard/settings': {
       id: '/dashboard/settings'
@@ -472,6 +593,55 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard/activity'
       preLoaderRoute: typeof DashboardActivityRouteImport
       parentRoute: typeof DashboardRoute
+    }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/settings': {
+      id: '/admin/settings'
+      path: '/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AdminSettingsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/chatbots': {
+      id: '/admin/chatbots'
+      path: '/chatbots'
+      fullPath: '/admin/chatbots'
+      preLoaderRoute: typeof AdminChatbotsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/billing': {
+      id: '/admin/billing'
+      path: '/billing'
+      fullPath: '/admin/billing'
+      preLoaderRoute: typeof AdminBillingRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/analytics': {
+      id: '/admin/analytics'
+      path: '/analytics'
+      fullPath: '/admin/analytics'
+      preLoaderRoute: typeof AdminAnalyticsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/users/$id': {
+      id: '/admin/users/$id'
+      path: '/$id'
+      fullPath: '/admin/users/$id'
+      preLoaderRoute: typeof AdminUsersIdRouteImport
+      parentRoute: typeof AdminUsersRoute
+    }
+    '/admin/chatbots/$id': {
+      id: '/admin/chatbots/$id'
+      path: '/$id'
+      fullPath: '/admin/chatbots/$id'
+      preLoaderRoute: typeof AdminChatbotsIdRouteImport
+      parentRoute: typeof AdminChatbotsRoute
     }
     '/dashboard/agents/$id/': {
       id: '/dashboard/agents/$id/'
@@ -525,6 +695,50 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AdminChatbotsRouteChildren {
+  AdminChatbotsIdRoute: typeof AdminChatbotsIdRoute
+}
+
+const AdminChatbotsRouteChildren: AdminChatbotsRouteChildren = {
+  AdminChatbotsIdRoute: AdminChatbotsIdRoute,
+}
+
+const AdminChatbotsRouteWithChildren = AdminChatbotsRoute._addFileChildren(
+  AdminChatbotsRouteChildren,
+)
+
+interface AdminUsersRouteChildren {
+  AdminUsersIdRoute: typeof AdminUsersIdRoute
+}
+
+const AdminUsersRouteChildren: AdminUsersRouteChildren = {
+  AdminUsersIdRoute: AdminUsersIdRoute,
+}
+
+const AdminUsersRouteWithChildren = AdminUsersRoute._addFileChildren(
+  AdminUsersRouteChildren,
+)
+
+interface AdminRouteChildren {
+  AdminAnalyticsRoute: typeof AdminAnalyticsRoute
+  AdminBillingRoute: typeof AdminBillingRoute
+  AdminChatbotsRoute: typeof AdminChatbotsRouteWithChildren
+  AdminSettingsRoute: typeof AdminSettingsRoute
+  AdminUsersRoute: typeof AdminUsersRouteWithChildren
+  AdminIndexRoute: typeof AdminIndexRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminAnalyticsRoute: AdminAnalyticsRoute,
+  AdminBillingRoute: AdminBillingRoute,
+  AdminChatbotsRoute: AdminChatbotsRouteWithChildren,
+  AdminSettingsRoute: AdminSettingsRoute,
+  AdminUsersRoute: AdminUsersRouteWithChildren,
+  AdminIndexRoute: AdminIndexRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 interface DashboardRouteChildren {
   DashboardActivityRoute: typeof DashboardActivityRoute
   DashboardAnalyticsRoute: typeof DashboardAnalyticsRoute
@@ -565,6 +779,7 @@ const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRouteWithChildren,
   CustomersRoute: CustomersRoute,
   DashboardRoute: DashboardRouteWithChildren,
   EnterpriseRoute: EnterpriseRoute,

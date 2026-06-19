@@ -107,3 +107,40 @@ export interface Aiaction {
   enabled: boolean;
   created_at: string;
 }
+
+export interface AdminLog {
+  id: string;
+  admin_id: string;
+  action: string;
+  target_user_id: string | null;
+  target_resource: string | null;
+  resource_id: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface PlatformSetting {
+  key: string;
+  value: unknown;
+  updated_at: string;
+  updated_by: string | null;
+}
+
+export type UserStatus = "active" | "suspended";
+
+export interface AdminDashboardStats {
+  totalUsers: number;
+  userGrowthPercent: number;
+  totalChatbots: number;
+  totalMessages: number;
+  monthlyRevenue: number;
+  activeSubscriptions: number;
+  churnedUsersThisMonth: number;
+  userSignupsOverTime: { date: string; count: number }[];
+  messagesPerDay: { date: string; count: number }[];
+  revenueOverTime: { date: string; amount: number }[];
+  planDistribution: { plan: string; count: number }[];
+  recentSignups: { id: string; email: string; name: string; created_at: string }[];
+  recentChatbots: { id: string; name: string; user_email: string; created_at: string }[];
+  recentSubscriptionChanges: { id: string; user_email: string; plan: string; action: string; created_at: string }[];
+}
