@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Bot,
   FileText,
@@ -13,7 +13,8 @@ import {
   Sparkles,
 } from "lucide-react";
 import { createChatbot } from "@/lib/server-functions/chatbots";
-import { addSource } from "@/lib/server-functions/sources";
+import { addSource, getTrainingStatus } from "@/lib/server-functions/sources";
+import { SiriLoader } from "@/components/ui/siri-loader";
 
 export const Route = createFileRoute("/dashboard/create")({
   head: () => ({
@@ -70,8 +71,28 @@ function CreateAgentWizard() {
   const [greeting, setGreeting] = useState("Hi! How can I help you?");
 
   const [creating, setCreating] = useState(false);
+  const [training, setTraining] = useState(false);
+  const [trainingError, setTrainingError] = useState(false);
+  const [agentId, setAgentId] = useState<string | null>(null);
   const [createdId, setCreatedId] = useState<string | null>(null);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!training || !agentId) return;
+    const interval = setInterval(async () => {
+      try {
+        const status = await getTrainingStatus({ data: { chatbotId: agentId } });
+        if (status.allTrained || status.hasFailed) {
+          setTraining(false);
+          setCreatedId(agentId);
+          if (status.hasFailed) setTrainingError(true);
+        }
+      } catch {
+        // keep polling
+      }
+    }, 1500);
+    return () => clearInterval(interval);
+  }, [training, agentId]);
 
   const canContinue =
     step === 0 ? name.trim().length > 0
@@ -153,10 +174,17 @@ function CreateAgentWizard() {
         }
       }
 
-      setCreatedId(agentId);
+      if (sources.length > 0) {
+        setAgentId(agentId);
+        setTraining(true);
+      } else {
+        setCreatedId(agentId);
+      }
     } catch (err) {
       console.error("Failed to create agent:", err);
       setError("Failed to create agent. Please try again.");
+      setCreating(false);
+      return;
     }
     setCreating(false);
   }
@@ -407,9 +435,23 @@ function CreateAgentWizard() {
               />
             </div>
 
+            {training && (
+              <div className="rounded-xl border border-border bg-background p-6">
+                <SiriLoader />
+              </div>
+            )}
+
+            {trainingError && !training && (
+              <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+                Some sources failed to train. Your agent may not have complete knowledge.
+              </div>
+            )}
+
             {createdId && (
               <div className="rounded-xl border border-primary/40 bg-primary/5 p-4">
-                <p className="text-sm font-medium">Agent created!</p>
+                <p className="text-sm font-medium">
+                  {trainingError ? "Agent created (with warnings)" : "Agent created!"}
+                </p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   Embed this script on your website:
                 </p>
@@ -423,7 +465,7 @@ function CreateAgentWizard() {
               <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
             )}
 
-            {!createdId && (
+            {!createdId && !training && (
               <button
                 onClick={handleCreate}
                 disabled={creating}
@@ -456,7 +498,7 @@ function CreateAgentWizard() {
       </div>
 
       {/* Footer nav */}
-      {!createdId && (
+      {!createdId && !training && (
         <div className="mt-6 flex items-center justify-between">
           <button
             onClick={() => setStep((s) => Math.max(0, s - 1))}

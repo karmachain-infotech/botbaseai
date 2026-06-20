@@ -202,6 +202,73 @@ export const getMessageVolume = createServerFn({ method: "GET" })
     }
   });
 
+export const getAggregateAnalytics = createServerFn({ method: "GET" })
+  .handler(async () => {
+    try {
+      const supabase = await createClient();
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) throw new AuthError();
+      const admin = getAdminClient();
+
+      const { data: chatbots, error: botErr } = await admin
+        .from("chatbots")
+        .select("id, status, message_count")
+        .eq("user_id", user.id);
+      if (botErr) throw new DatabaseError(botErr.message);
+
+      const totalAgents = chatbots?.length ?? 0;
+      const liveAgents = chatbots?.filter((b) => b.status === "live").length ?? 0;
+      const totalMessages = chatbots?.reduce((sum, b) => sum + (b.message_count ?? 0), 0) ?? 0;
+
+      const botIds = (chatbots ?? []).map((b: { id: string }) => b.id);
+
+      let totalConversations = 0;
+      let resolvedCount = 0;
+      let avgResponseTime = 0;
+
+      if (botIds.length > 0) {
+        const { data: conversations, error: convErr } = await admin
+          .from("conversations")
+          .select("id, status")
+          .in("chatbot_id", botIds);
+        if (convErr) throw new DatabaseError(convErr.message);
+
+        if (conversations) {
+          totalConversations = conversations.length;
+          resolvedCount = conversations.filter((c) => c.status === "resolved").length;
+        }
+
+        const { data: messages, error: msgErr } = await admin
+          .from("messages")
+          .select("response_time_ms")
+          .in("conversation_id", conversations?.map((c) => c.id) ?? [])
+          .eq("role", "assistant")
+          .not("response_time_ms", "is", null);
+        if (msgErr) throw new DatabaseError(msgErr.message);
+
+        const rts = (messages ?? []).map((m) => m.response_time_ms).filter(Boolean) as number[];
+        if (rts.length > 0) {
+          avgResponseTime = Math.round(rts.reduce((a, b) => a + b, 0) / rts.length);
+        }
+      }
+
+      const resolvedRate = totalConversations > 0
+        ? Math.round((resolvedCount / totalConversations) * 100)
+        : 0;
+
+      return {
+        totalConversations,
+        totalMessages,
+        avgResponseTime,
+        totalAgents,
+        liveAgents,
+        resolvedRate,
+      };
+    } catch (error) {
+      throw handleServerError(error, "getAggregateAnalytics");
+    }
+  });
+
 export const getUnansweredQuestions = createServerFn({ method: "GET" })
   .inputValidator(z.object({ chatbotId: z.string().uuid() }))
   .handler(async ({ data }) => {

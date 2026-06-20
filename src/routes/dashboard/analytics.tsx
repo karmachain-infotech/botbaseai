@@ -1,8 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
-import { BarChart3, ArrowLeft, Bot, MessageSquare, Clock, TrendingUp } from "lucide-react";
-import { useAuth } from "@/lib/auth-context";
-import { createClient } from "@/lib/supabase/client";
+import { BarChart3, Bot, MessageSquare, Clock, TrendingUp } from "lucide-react";
+import { getAggregateAnalytics } from "@/lib/server-functions/analytics";
 
 export const Route = createFileRoute("/dashboard/analytics")({
   head: () => ({
@@ -15,13 +14,11 @@ export const Route = createFileRoute("/dashboard/analytics")({
 });
 
 function DashboardAnalytics() {
-  const { user, loading: authLoading } = useAuth();
-  const supabase = createClient();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     totalConversations: 0,
     totalMessages: 0,
-    avgResponseTime: "--",
+    avgResponseTime: 0,
     totalAgents: 0,
     liveAgents: 0,
     resolvedRate: 0,
@@ -31,53 +28,14 @@ function DashboardAnalytics() {
 
   useEffect(() => {
     mountedRef.current = true;
-    if (!authLoading && user) loadStats();
-    if (!authLoading && !user) setLoading(false);
+    loadStats();
     return () => { mountedRef.current = false; };
-  }, [user, authLoading]);
+  }, []);
 
   async function loadStats() {
     try {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (!authUser) return;
-
-      const { data: chatbots } = await supabase
-        .from("chatbots")
-        .select("id, status, message_count")
-        .eq("user_id", authUser.id);
-
-      if (!mountedRef.current || !chatbots) return;
-
-      const botIds = chatbots.map(b => b.id);
-      const totalAgents = chatbots.length;
-      const liveAgents = chatbots.filter(b => b.status === "live").length;
-      const totalMessages = chatbots.reduce((sum, b) => sum + (b.message_count ?? 0), 0);
-
-      let totalConversations = 0;
-      let resolvedCount = 0;
-
-      if (botIds.length > 0) {
-        const { data: conversations } = await supabase
-          .from("conversations")
-          .select("id, status")
-          .in("chatbot_id", botIds);
-
-        if (conversations) {
-          totalConversations = conversations.length;
-          resolvedCount = conversations.filter(c => c.status === "resolved").length;
-        }
-      }
-
-      if (mountedRef.current) {
-        setStats({
-          totalConversations,
-          totalMessages,
-          avgResponseTime: "--",
-          totalAgents,
-          liveAgents,
-          resolvedRate: totalConversations > 0 ? Math.round((resolvedCount / totalConversations) * 100) : 0,
-        });
-      }
+      const result = await getAggregateAnalytics();
+      if (mountedRef.current) setStats(result);
     } catch (err) {
       console.error("Failed to load analytics:", err);
       if (mountedRef.current) setError("Failed to load analytics data.");
@@ -86,7 +44,7 @@ function DashboardAnalytics() {
     }
   }
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="h-8 w-48 animate-pulse rounded bg-secondary" />
@@ -117,7 +75,7 @@ function DashboardAnalytics() {
         {[
           { label: "Total conversations", value: stats.totalConversations.toLocaleString(), icon: MessageSquare, gradient: "from-blue-500/20 to-indigo-500/20" },
           { label: "Total messages", value: stats.totalMessages.toLocaleString(), icon: MessageSquare, gradient: "from-purple-500/20 to-pink-500/20" },
-          { label: "Avg response time", value: stats.avgResponseTime > 0 ? `${(stats.avgResponseTime / 1000).toFixed(1)}s` : "—", icon: Clock, gradient: "from-amber-500/20 to-orange-500/20" },
+          { label: "Avg response time", value: stats.avgResponseTime ? `${(stats.avgResponseTime / 1000).toFixed(1)}s` : "—", icon: Clock, gradient: "from-amber-500/20 to-orange-500/20" },
           { label: "All agents", value: stats.totalAgents.toString(), icon: Bot, gradient: "from-primary/20 to-purple-500/20" },
           { label: "Live agents", value: stats.liveAgents.toString(), icon: TrendingUp, gradient: "from-emerald-500/20 to-teal-500/20" },
           { label: "Resolution rate", value: `${stats.resolvedRate}%`, icon: TrendingUp, gradient: "from-rose-500/20 to-red-500/20" },

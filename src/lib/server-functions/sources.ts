@@ -114,6 +114,33 @@ export const deleteSource = createServerFn({ method: "POST" })
     }
   });
 
+export const getTrainingStatus = createServerFn({ method: "GET" })
+  .inputValidator(z.object({ chatbotId: z.string().uuid() }))
+  .handler(async ({ data }) => {
+    try {
+      const supabase = await createClient();
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) throw new AuthError();
+
+      const admin = getAdminClient();
+      const { data: sources, error } = await admin
+        .from("sources")
+        .select("id, name, type, status")
+        .eq("chatbot_id", data.chatbotId);
+
+      if (error) throw new DatabaseError(error.message);
+
+      const list = sources ?? [];
+      return {
+        sources: list,
+        allTrained: list.length > 0 && list.every((s) => s.status === "trained"),
+        hasFailed: list.some((s) => s.status === "failed"),
+      };
+    } catch (error) {
+      throw handleServerError(error, "getTrainingStatus");
+    }
+  });
+
 export const retrainSource = createServerFn({ method: "POST" })
   .inputValidator(z.object({ sourceId: z.string().uuid() }))
   .handler(async ({ data }) => {
