@@ -128,15 +128,29 @@ export async function streamChat(
     searchSimilarChunks(req.chatbotId, req.message),
   ]);
 
-  const context = chunks.map((c) => c.content).join("\n\n").slice(0, 800);
+  let context = chunks.map((c) => c.content).join("\n\n").slice(0, 800);
+
+  if (!context) {
+    const { data: fallbackChunks, error: fallbackErr } = await supabase
+      .from("embeddings")
+      .select("content")
+      .eq("chatbot_id", req.chatbotId)
+      .limit(5);
+    if (!fallbackErr && fallbackChunks && fallbackChunks.length > 0) {
+      context = (fallbackChunks as unknown as { content: string }[])
+        .map((c) => c.content).join("\n\n").slice(0, 800);
+    }
+  }
 
   const botName = bot.name || "Support Agent";
   const instructions = (bot.instructions || "").slice(0, 1000);
 
-  const systemInstruction = `You are ${botName}, a friendly customer support rep for this company.
+  const systemInstruction = `You are a helpful assistant. Answer the user's questions based on the CONTEXT provided below.
 
 ${instructions ? `=== GUIDELINES ===\n${instructions}\n\n` : ""}=== CONTEXT ===
 ${context || "No relevant context found."}
+
+If the user asks about your name or identity, look for the answer in the CONTEXT above.
 
 Keep responses short, warm, and helpful. Use emojis naturally.`;
 
