@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import { Navbar } from "@/components/marketing/Navbar";
 import { Footer } from "@/components/marketing/Footer";
 import { Check, TriangleAlert } from "lucide-react";
@@ -83,9 +84,24 @@ function Signup() {
       <Navbar />
       <div className="relative flex min-h-[calc(100vh-4rem)] items-center justify-center overflow-hidden px-4">
         <div className="pointer-events-none absolute inset-0 hero-glow" />
-        <div className="relative w-full max-w-md rounded-2xl border border-border bg-card p-8 shadow-card">
-          <h1 className="text-2xl font-bold tracking-tight">Build your agent for free</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Create your BotbaseAI account.</p>
+        <motion.div
+          className="relative w-full max-w-md rounded-2xl border border-border bg-card p-8 shadow-card"
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
+        >
+          <motion.h1
+            className="text-2xl font-bold tracking-tight"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.1, ease: [0.25, 0.1, 0.25, 1] }}
+          >Build your agent for free</motion.h1>
+          <motion.p
+            className="mt-1 text-sm text-muted-foreground"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.4, delay: 0.15 }}
+          >Create your BotbaseAI account.</motion.p>
           <ul className="mt-4 space-y-1.5">
             {perks.map((p) => (
               <li key={p} className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -153,7 +169,7 @@ function Signup() {
               Log in
             </Link>
           </p>
-        </div>
+        </motion.div>
       </div>
     </div>
   );

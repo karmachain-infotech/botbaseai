@@ -48,7 +48,7 @@ function EmbedTest() {
       await navigator.clipboard.writeText(embedCode);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch { /* ignore */ }
+    } catch { console.error("Failed to copy embed code"); }
   }
 
   if (loading) {

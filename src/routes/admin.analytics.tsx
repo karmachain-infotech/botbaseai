@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -11,12 +10,20 @@ export const Route = createFileRoute("/admin/analytics")({
   component: AdminAnalytics,
 });
 
+interface AnalyticsData {
+  totalConversationsThisPeriod: number;
+  avgResponseTime: number;
+  topChatbots: { id: string; name: string; message_count: number }[];
+  topUsers: { id: string; email: string; name: string; total_messages: number }[];
+  dau: { date: string; count: number }[];
+}
+
 const PERIODS = ["7d", "30d", "90d"] as const;
 
 function AdminAnalytics() {
   const [period, setPeriod] = useState<"7d" | "30d" | "90d">("30d");
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error } = useQuery<AnalyticsData>({
     queryKey: ["admin-analytics", period],
     queryFn: () => adminGetAnalytics({ data: { period } }),
   });

@@ -372,7 +372,7 @@ export async function processStripeWebhook(
 
       case "charge.refunded": {
         const charge = event.data.object as { customer: string };
-        console.log(`[processStripeWebhook] Charge refunded for customer ${charge.customer}`);
+        console.error(`[processStripeWebhook] Charge refunded for customer ${charge.customer}`);
         await resetToFreePlan(admin, charge.customer);
         break;
       }
@@ -380,7 +380,7 @@ export async function processStripeWebhook(
 
     if ((eventType as string) === "payment_intent.refunded") {
       const pi = event.data.object as { customer: string };
-      console.log(`[processStripeWebhook] Payment refunded for customer ${pi.customer}`);
+      console.error(`[processStripeWebhook] Payment refunded for customer ${pi.customer}`);
       await resetToFreePlan(admin, pi.customer);
     }
 

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -7,13 +6,34 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { Settings as SettingsIcon, Bell, Shield, Mail, Webhook, Palette, ToggleLeft } from "lucide-react";
 
+interface SettingsData {
+  platform_name: string;
+  announcement_banner_message: string;
+  announcement_banner_enabled: boolean;
+  webhook_notification_url: string;
+  default_free_credits: number;
+  default_hobby_credits: number;
+  default_standard_credits: number;
+  default_pro_credits: number;
+  default_enterprise_credits: number;
+  feature_allow_export: boolean;
+  feature_allow_team: boolean;
+  feature_allow_custom_domain: boolean;
+  maintenance_mode: boolean | { enabled: boolean; message: string };
+  smtp_host: string;
+  smtp_port: string;
+  smtp_user: string;
+  smtp_pass: string;
+  smtp_from: string;
+}
+
 export const Route = createFileRoute("/admin/settings")({
   component: AdminSettings,
 });
 
 function AdminSettings() {
   const queryClient = useQueryClient();
-  const [localSettings, setLocalSettings] = useState<Record<string, unknown>>({});
+  const [localSettings, setLocalSettings] = useState<Partial<SettingsData>>({});
   const loadedRef = useRef(false);
 
   const { data, isLoading } = useQuery({
@@ -29,7 +49,7 @@ function AdminSettings() {
   }, [data]);
 
   const updateMutation = useMutation({
-    mutationFn: (vars: { key: string; value: unknown }) => adminUpdateSetting({ data: vars }),
+    mutationFn: (vars: { key: string; value: string | number | boolean }) => adminUpdateSetting({ data: vars }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-settings"] });
       toast.success("Setting saved");
@@ -37,9 +57,9 @@ function AdminSettings() {
     onError: () => toast.error("Failed to save setting"),
   });
 
-  const debouncedSave = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const debouncedSave = useRef<Record<string, ReturnType<typeof setTimeout>>>({} as Record<string, ReturnType<typeof setTimeout>>);
 
-  function updateAndSave(key: string, value: unknown, delay = 600) {
+  function updateAndSave(key: string, value: string | number | boolean, delay = 600) {
     setLocalSettings(prev => ({ ...prev, [key]: value }));
     if (debouncedSave.current[key]) clearTimeout(debouncedSave.current[key]);
     debouncedSave.current[key] = setTimeout(() => {
@@ -65,7 +85,7 @@ function AdminSettings() {
       <div className="max-w-2xl space-y-6">
         <Section icon={Palette} title="General">
           <SettingRow label="Platform Name">
-            <input type="text" value={(localSettings.platform_name as string) || "BotbaseAI"}
+            <input type="text" value={localSettings.platform_name ?? "BotbaseAI"}
               onChange={e => updateAndSave("platform_name", e.target.value)}
               className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-white outline-none focus:border-zinc-600" />
           </SettingRow>
@@ -101,7 +121,7 @@ function AdminSettings() {
             <Toggle enabled={!!localSettings.announcement_banner_enabled} onClick={() => toggleAndSave("announcement_banner_enabled")} />
           </SettingRow>
           <SettingRow label="Banner Message">
-            <input type="text" value={(localSettings.announcement_banner_message as string) || ""}
+            <input type="text" value={localSettings.announcement_banner_message ?? ""}
               onChange={e => updateAndSave("announcement_banner_message", e.target.value)}
               placeholder="We're experiencing higher than normal traffic..."
               className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-white outline-none focus:border-zinc-600" />
@@ -122,7 +142,7 @@ function AdminSettings() {
             { key: "smtp_pass", label: "SMTP Password", type: "password" },
           ].map(f => (
             <SettingRow key={f.key} label={f.label}>
-              <input type={f.type || "text"} value={(localSettings[f.key] as string) || ""}
+              <input type={f.type || "text"} value={(localSettings[f.key] ?? "") as string}
                 onChange={e => updateAndSave(f.key, e.target.value)}
                 className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-white outline-none focus:border-zinc-600" />
             </SettingRow>
@@ -131,7 +151,7 @@ function AdminSettings() {
 
         <Section icon={Webhook} title="Webhook URL">
           <SettingRow label="Notification Webhook">
-            <input type="text" value={(localSettings.webhook_notification_url as string) || ""}
+            <input type="text" value={localSettings.webhook_notification_url ?? ""}
               onChange={e => updateAndSave("webhook_notification_url", e.target.value)}
               placeholder="https://hooks.example.com/notify"
               className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-white outline-none focus:border-zinc-600" />

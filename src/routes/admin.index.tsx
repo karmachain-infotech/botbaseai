@@ -1,10 +1,10 @@
-// @ts-nocheck
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { getAdminDashboard } from "@/lib/server-functions/admin";
+import type { AdminDashboardData } from "@/lib/types/admin";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Users, Bot, MessageSquare, CreditCard, DollarSign, TrendingUp, TrendingDown, UserMinus } from "lucide-react";
-import { LineChart, Line, BarChart, Bar, AreaChart, Area, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { LineChart, Line, AreaChart, Area, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 export const Route = createFileRoute("/admin/")({
   component: AdminDashboard,
@@ -13,7 +13,7 @@ export const Route = createFileRoute("/admin/")({
 const COLORS = ["#22c55e", "#3b82f6", "#a855f7", "#f59e0b", "#ef4444"];
 
 function AdminDashboard() {
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error } = useQuery<AdminDashboardData>({
     queryKey: ["admin-dashboard"],
     queryFn: () => getAdminDashboard(),
     refetchInterval: 60_000,
@@ -35,7 +35,7 @@ function AdminDashboard() {
         <StatCard title="Messages" value={data.totalMessages.toLocaleString()} icon={MessageSquare} />
         <StatCard title="Monthly Revenue" value={`$${data.monthlyRevenue.toLocaleString()}`} icon={DollarSign} />
         <StatCard title="Active Subs" value={data.activeSubscriptions.toLocaleString()} icon={CreditCard} />
-        <StatCard title="Churned" value={data.churnedUsersThisMonth.toString()} icon={UserMinus} negative />
+        <StatCard title="Churned (This Month)" value={data.churnedUsersThisMonth.toString()} icon={UserMinus} negative />
       </div>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
@@ -50,15 +50,14 @@ function AdminDashboard() {
             </LineChart>
           </ResponsiveContainer>
         </ChartCard>
-        <ChartCard title="Messages Per Day (Last 30 Days)">
+        <ChartCard title="Chatbot Distribution">
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={data.messagesPerDay}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
-              <XAxis dataKey="date" tick={{ fill: "#a1a1aa", fontSize: 12 }} tickFormatter={v => v?.slice(5) ?? ""} />
-              <YAxis tick={{ fill: "#a1a1aa", fontSize: 12 }} />
+            <PieChart>
+              <Pie data={data.planDistribution} cx="50%" cy="50%" innerRadius={60} outerRadius={100} dataKey="count" label={({ plan, percent }) => `${plan} (${(percent * 100).toFixed(0)}%)`}>
+                {data.planDistribution.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+              </Pie>
               <Tooltip contentStyle={{ backgroundColor: "#18181b", border: "1px solid #27272a", borderRadius: "8px", color: "#fff" }} />
-              <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-            </BarChart>
+            </PieChart>
           </ResponsiveContainer>
         </ChartCard>
       </div>
@@ -75,28 +74,41 @@ function AdminDashboard() {
             </AreaChart>
           </ResponsiveContainer>
         </ChartCard>
-        <ChartCard title="Plan Distribution">
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie data={data.planDistribution} cx="50%" cy="50%" innerRadius={60} outerRadius={100} dataKey="count" label={({ plan, percent }) => `${plan} (${(percent * 100).toFixed(0)}%)`}>
-                {data.planDistribution.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-              </Pie>
-              <Tooltip contentStyle={{ backgroundColor: "#18181b", border: "1px solid #27272a", borderRadius: "8px", color: "#fff" }} />
-            </PieChart>
-          </ResponsiveContainer>
+        <ChartCard title="MRR / ARR">
+          <div className="flex h-[300px] flex-col items-center justify-center gap-4">
+            <div className="text-center">
+              <p className="text-sm text-zinc-400">Monthly Recurring Revenue</p>
+              <p className="text-3xl font-bold text-white">${data.monthlyRevenue.toLocaleString()}</p>
+            </div>
+            <div className="text-center">
+              <p className="text-sm text-zinc-400">Annual Recurring Revenue</p>
+              <p className="text-3xl font-bold text-white">${(data.monthlyRevenue * 12).toLocaleString()}</p>
+            </div>
+          </div>
         </ChartCard>
       </div>
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-3">
-        <ActivityFeed title="Recent Signups" items={data.recentSignups.map(s => ({ label: s.name || s.email, sub: s.email, time: s.created_at }))} />
-        <ActivityFeed title="New Chatbots" items={data.recentChatbots.map(c => ({ label: c.name, sub: c.user_email, time: c.created_at }))} />
-        <ActivityFeed title="Subscription Changes" items={data.recentSubscriptionChanges.map(sc => ({ label: sc.action.replace(/_/g, " "), sub: sc.user_email, time: sc.created_at }))} />
+      <div className="mt-8 grid gap-6 lg:grid-cols-1">
+        <ActivityFeed title="Recent Activity" items={[
+          ...data.recentSignups.map(s => ({ label: `New signup: ${s.name || s.email}`, sub: s.email, time: s.created_at })),
+          ...data.recentChatbots.map(c => ({ label: `New chatbot: ${c.name}`, sub: c.user_email, time: c.created_at })),
+          ...data.recentSubscriptionChanges.map(sc => ({ label: `Subscription ${sc.action}: ${sc.user_email}`, sub: `Plan: ${sc.plan}`, time: sc.created_at })),
+        ]} />
       </div>
     </div>
   );
 }
 
-function StatCard({ title, value, change, trend, icon: Icon, negative }: any) {
+interface StatCardProps {
+  title: string;
+  value: string;
+  change?: string;
+  trend?: "up" | "down";
+  icon: React.ComponentType<{ className?: string }>;
+  negative?: boolean;
+}
+
+function StatCard({ title, value, change, trend, icon: Icon, negative }: StatCardProps) {
   return (
     <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-5">
       <div className="flex items-start justify-between">

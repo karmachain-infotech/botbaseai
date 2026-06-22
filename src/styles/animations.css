@@ -1,0 +1,22 @@
+@layer utilities {
+  .glass {
+    backdrop-filter: blur(20px) saturate(1.2);
+    -webkit-backdrop-filter: blur(20px) saturate(1.2);
+    background-color: oklch(0.16 0.02 265 / 0.6);
+  }
+  .glass-card {
+    backdrop-filter: blur(12px) saturate(1.1);
+    -webkit-backdrop-filter: blur(12px) saturate(1.1);
+    background-color: oklch(0.2 0.025 265 / 0.5);
+  }
+  .glow-soft {
+    box-shadow:
+      0 0 40px oklch(0.62 0.2 285 / 0.08),
+      0 0 80px oklch(0.62 0.2 285 / 0.04);
+  }
+  .glow-intense {
+    box-shadow:
+      0 0 60px oklch(0.62 0.2 285 / 0.18),
+      0 0 120px oklch(0.62 0.2 285 / 0.08);
+  }
+}

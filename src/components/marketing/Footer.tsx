@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { ShieldCheck, Lock } from "lucide-react";
+import { motion } from "framer-motion";
 
 const columns = [
   {
@@ -41,8 +42,22 @@ export function Footer() {
   return (
     <footer className="border-t border-border/60 bg-background">
       <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-        <div className="grid gap-10 md:grid-cols-[1.5fr_repeat(3,1fr)]">
-          <div>
+        <motion.div
+          className="grid gap-10 md:grid-cols-[1.5fr_repeat(3,1fr)]"
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-40px" }}
+          variants={{
+            hidden: { opacity: 0 },
+            visible: { opacity: 1, transition: { staggerChildren: 0.08 } },
+          }}
+        >
+          <motion.div
+            variants={{
+              hidden: { opacity: 0, y: 20 },
+              visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.25, 0.1, 0.25, 1] } },
+            }}
+          >
             <Link to="/" className="flex items-center gap-2">
               <img src="/logos.svg" alt="BotbaseAI" className="h-8 w-8" />
               <span className="text-lg font-bold tracking-tight">BotbaseAI</span>
@@ -58,10 +73,16 @@ export function Footer() {
                 <Lock className="h-4 w-4 text-primary" /> GDPR
               </span>
             </div>
-          </div>
+          </motion.div>
 
           {columns.map((col) => (
-            <div key={col.title}>
+            <motion.div
+              key={col.title}
+              variants={{
+                hidden: { opacity: 0, y: 20 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.25, 0.1, 0.25, 1] } },
+              }}
+            >
               <h4 className="text-sm font-semibold">{col.title}</h4>
               <ul className="mt-4 space-y-3">
                 {col.links.map((link) => (
@@ -75,9 +96,9 @@ export function Footer() {
                   </li>
                 ))}
               </ul>
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
 
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-border/60 pt-8 sm:flex-row">
           <p className="text-sm text-muted-foreground">

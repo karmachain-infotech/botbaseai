@@ -1,8 +1,8 @@
-// @ts-nocheck
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { adminListUsers, adminUpdateUser, adminDeleteUser } from "@/lib/server-functions/admin";
+import type { AdminUser } from "@/lib/types/admin";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -27,7 +27,7 @@ function AdminUsers() {
 
   if (isDetail) return <Outlet />;
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error } = useQuery<{ users: AdminUser[]; total: number; totalPages: number }>({
     queryKey: ["admin-users", search, planFilter, sort, page],
     queryFn: () => adminListUsers({
       data: {
@@ -56,7 +56,7 @@ function AdminUsers() {
     setPage(1);
   };
 
-  const selectAll = (users: any[]) => {
+  const selectAll = (users: AdminUser[]) => {
     if (selected.size === users.length) setSelected(new Set());
     else setSelected(new Set(users.map(u => u.id)));
   };
@@ -133,7 +133,7 @@ function AdminUsers() {
                 {data?.users?.length === 0 && (
                   <tr><td colSpan={7} className="p-8 text-center text-zinc-500">No users found</td></tr>
                 )}
-                {data?.users?.map((u: any) => (
+                {data?.users?.map((u: AdminUser) => (
                   <tr key={u.id} className="border-b border-zinc-800 hover:bg-zinc-900/50">
                     <td className="p-4"><input type="checkbox" checked={selected.has(u.id)} onChange={() => toggleSelect(u.id)} className="rounded border-zinc-600 bg-zinc-800" /></td>
                     <td className="p-4"><Link to="/admin/users/$id" params={{ id: u.id }} className="text-blue-400 hover:underline">{u.email}</Link></td>

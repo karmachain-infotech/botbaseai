@@ -105,7 +105,7 @@ function DashboardIntegrations() {
     }
     if (selected?.id === "email") {
       const saved = localStorage.getItem("bb_smtp_config");
-      if (saved) try { setSmtpConfig(JSON.parse(saved)); } catch {}
+      if (saved) try { setSmtpConfig(JSON.parse(saved)); } catch { console.error("Failed to parse saved SMTP config"); }
     }
   }, [selected?.id]);
 
@@ -113,11 +113,12 @@ function DashboardIntegrations() {
     navigator.clipboard.writeText(text).then(() => {
       setCopiedId(id);
       setTimeout(() => setCopiedId(""), 2000);
-    }).catch(() => {});
+    }).catch(() => console.error("Failed to copy to clipboard"));
   }
 
   function handleSmtpSave() {
-    localStorage.setItem("bb_smtp_config", JSON.stringify(smtpConfig));
+    const { pass: _, ...safeConfig } = smtpConfig;
+    localStorage.setItem("bb_smtp_config", JSON.stringify(safeConfig));
     setSavedSmtp(true);
     toast.success("SMTP configuration saved");
     setTimeout(() => setSavedSmtp(false), 2000);

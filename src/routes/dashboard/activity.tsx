@@ -124,7 +124,7 @@ function DashboardActivity() {
 
     const { data: convData, error: convErr } = await supabase
       .from("conversations")
-      .select("id, chatbot_id, session_id, user_identifier, status, escalated, rating, created_at, updated_at")
+      .select("id, chatbot_id, session_id, user_identifier, status, escalated, rating, created_at, updated_at, messages(count)")
       .in("chatbot_id", ids)
       .order("updated_at", { ascending: false })
       .range(from, to);
@@ -140,16 +140,8 @@ function DashboardActivity() {
     const raw: ConversationRecord[] = (convData ?? []).map(c => ({
       ...c,
       chatbot_name: map.get(c.chatbot_id) ?? "Unknown",
-      message_count: 0,
+      message_count: (c as Record<string, unknown>).messages?.[0]?.count ?? 0,
     }));
-
-    for (const record of raw) {
-      const { count } = await supabase
-        .from("messages")
-        .select("id", { count: "exact", head: true })
-        .eq("conversation_id", record.id);
-      record.message_count = count ?? 0;
-    }
 
     const grouped = new Map<string, ConversationRecord>();
     for (const r of raw) {

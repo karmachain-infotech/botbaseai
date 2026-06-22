@@ -1,6 +1,6 @@
-// @ts-nocheck
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import type { AdminBillingStats } from "@/lib/types/admin";
 import { adminGetBillingStats } from "@/lib/server-functions/admin";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DollarSign, TrendingUp, CreditCard, Users, Download } from "lucide-react";
@@ -10,7 +10,7 @@ export const Route = createFileRoute("/admin/billing")({
 });
 
 function AdminBilling() {
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error } = useQuery<AdminBillingStats>({
     queryKey: ["admin-billing"],
     queryFn: () => adminGetBillingStats(),
     refetchInterval: 120_000,

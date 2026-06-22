@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Bot, X, Send } from "lucide-react";
+import { useThinkingAnimation } from "@/hooks/use-thinking-animation";
+import { useTypewriter } from "@/hooks/use-typewriter";
 
 function formatMarkdown(text: string): string {
   let html = text
@@ -49,6 +51,14 @@ function formatMarkdown(text: string): string {
   return result.join("");
 }
 
+const ALLOWED_TAGS = new Set(["strong", "em", "code", "pre", "ul", "ol", "li", "span", "br"]);
+function sanitizeHtml(html: string): string {
+  return html.replace(/<(\/?)(\w+)[^>]*>/g, (match, slash, tag) => {
+    if (ALLOWED_TAGS.has(tag.toLowerCase())) return `<${slash}${tag}>`;
+    return "";
+  });
+}
+
 interface ChatWidgetProps {
   botId: string;
   botName: string;
@@ -66,36 +76,13 @@ export function ChatWidget({ botId, botName, primaryColor, greeting }: ChatWidge
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
-  const [isTyping, setIsTyping] = useState(false);
-  const [displayedText, setDisplayedText] = useState("");
   const [fullText, setFullText] = useState("");
   const chatEnd = useRef<HTMLDivElement>(null);
   const sessionId = useRef("w_" + (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)) + "_" + Date.now());
   const conversationId = useRef<string | undefined>(undefined);
 
-  const [dotCount, setDotCount] = useState(1);
-  useEffect(() => {
-    if (!thinking) {
-      setDotCount(1);
-      return;
-    }
-    const interval = setInterval(() => {
-      setDotCount((prev) => (prev < 3 ? prev + 1 : 1));
-    }, 400);
-    return () => clearInterval(interval);
-  }, [thinking]);
-
-  useEffect(() => {
-    if (!isTyping) return;
-    if (displayedText.length < fullText.length) {
-      const timer = setTimeout(() => {
-        setDisplayedText(fullText.slice(0, displayedText.length + 1));
-      }, 25);
-      return () => clearTimeout(timer);
-    } else {
-      setIsTyping(false);
-    }
-  }, [isTyping, displayedText, fullText]);
+  const { displayedText, isTyping } = useTypewriter(fullText);
+  const dots = useThinkingAnimation(thinking);
 
   useEffect(() => {
     chatEnd.current?.scrollIntoView({ behavior: "smooth" });
@@ -144,8 +131,6 @@ export function ChatWidget({ botId, botName, primaryColor, greeting }: ChatWidge
       setThinking(false);
       setMessages((prev) => [...prev, { role: "assistant", content: accumulated }]);
       setFullText(accumulated);
-      setDisplayedText("");
-      setIsTyping(true);
     } catch (err) {
       console.error("Widget chat error:", err);
       setThinking(false);
@@ -207,6 +192,7 @@ export function ChatWidget({ botId, botName, primaryColor, greeting }: ChatWidge
             </div>
             <button
               onClick={() => setIsOpen(false)}
+              aria-label="Close chat"
               style={{
                 background: "none",
                 border: "none",
@@ -257,7 +243,7 @@ export function ChatWidget({ botId, botName, primaryColor, greeting }: ChatWidge
                     {showTyping ? (
                       <span>{displayedText}<span style={{ animation: "blink 1s step-start infinite" }}>|</span></span>
                     ) : (
-                      <div dangerouslySetInnerHTML={{ __html: formatMarkdown(m.content) }} />
+                      <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(formatMarkdown(m.content)) }} />
                     )}
                   </div>
                 </div>
@@ -276,7 +262,7 @@ export function ChatWidget({ botId, botName, primaryColor, greeting }: ChatWidge
                   background: "white",
                   boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
                 }}>
-                  Thinking{".".repeat(dotCount)}
+                  Thinking{dots}
                 </div>
               </div>
             )}
@@ -298,6 +284,7 @@ export function ChatWidget({ botId, botName, primaryColor, greeting }: ChatWidge
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend()}
               placeholder="Type a message..."
+              aria-label="Type your message"
               disabled={thinking || isTyping}
               style={{
                 flex: 1,
@@ -313,6 +300,7 @@ export function ChatWidget({ botId, botName, primaryColor, greeting }: ChatWidge
             <button
               onClick={handleSend}
               disabled={!input.trim() || thinking || isTyping}
+              aria-label="Send message"
               style={{
                 border: "none",
                 borderRadius: "10px",
@@ -334,6 +322,7 @@ export function ChatWidget({ botId, botName, primaryColor, greeting }: ChatWidge
 
       <button
         onClick={() => setIsOpen(!isOpen)}
+        aria-label={isOpen ? "Close chat" : "Open chat"}
         style={{
           position: "fixed",
           bottom: "20px",

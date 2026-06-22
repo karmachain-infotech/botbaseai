@@ -10,9 +10,14 @@ import {
 import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
+import animationsCss from "../styles/animations.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider } from "../lib/auth-context";
 import { Toaster } from "@/components/ui/sonner";
+import { LenisProvider } from "@/components/motion/LenisProvider";
+import { PageTransition } from "@/components/motion/PageTransition";
+import { MouseGlow } from "@/components/motion/MouseGlow";
+import { FloatingShapes } from "@/components/motion/FloatingShapes";
 
 function NotFoundComponent() {
   return (
@@ -100,6 +105,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: appCss,
       },
+      {
+        rel: "stylesheet",
+        href: animationsCss,
+      },
     ],
   }),
   shellComponent: RootShell,
@@ -128,10 +137,16 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <Outlet />
-        <Toaster />
-      </AuthProvider>
+      <LenisProvider>
+        <AuthProvider>
+          <PageTransition>
+            <Outlet />
+          </PageTransition>
+          <Toaster />
+          <MouseGlow />
+          <FloatingShapes />
+        </AuthProvider>
+      </LenisProvider>
     </QueryClientProvider>
   );
 }

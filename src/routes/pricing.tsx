@@ -1,10 +1,14 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Fragment, useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import { Check, Minus, ArrowRight, ChevronDown } from "lucide-react";
 import { Navbar } from "@/components/marketing/Navbar";
 import { Footer } from "@/components/marketing/Footer";
 import { useAuth } from "@/lib/auth-context";
 import { createCheckoutSession, getPriceIds } from "@/lib/server-functions/stripe";
+import { AnimatedSection } from "@/components/motion/AnimatedSection";
+import { StaggerContainer, staggerItem } from "@/components/motion/StaggerContainer";
+import { ParallaxCard } from "@/components/motion/ParallaxCard";
 
 export const Route = createFileRoute("/pricing")({
   head: () => ({
@@ -264,10 +268,11 @@ function Pricing() {
         {error && (
           <div className="mb-6 rounded-lg bg-destructive/10 p-3 text-sm text-destructive text-center">{error}</div>
         )}
-        <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+        <StaggerContainer className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5" staggerDelay={0.05}>
           {plans.map((p) => (
-            <div
+            <ParallaxCard
               key={p.name}
+              intensity={4}
               className={`relative flex flex-col rounded-2xl border bg-card p-6 ${
                 p.popular ? "border-primary shadow-card glow-primary" : "border-border"
               }`}
@@ -329,9 +334,9 @@ function Pricing() {
                   </li>
                 ))}
               </ul>
-            </div>
+            </ParallaxCard>
           ))}
-        </div>
+        </StaggerContainer>
       </section>
 
       {/* Add-ons */}

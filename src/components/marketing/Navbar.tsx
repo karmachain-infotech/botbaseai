@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Menu, X } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
 
 const navLinks = [
   { label: "Solutions", to: "/solutions" as const },
@@ -12,9 +13,27 @@ const navLinks = [
 
 export function Navbar() {
   const [open, setOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const prefersReduced = useReducedMotion();
+
+  useEffect(() => {
+    function handleScroll() {
+      setScrolled(window.scrollY > 40);
+    }
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur-xl">
+    <motion.header
+      className={`sticky top-0 z-50 border-b transition-colors ${
+        scrolled ? "border-border/60" : "border-transparent"
+      } ${scrolled ? "glass" : "bg-background/80 backdrop-blur-xl"}`}
+      initial={{ y: prefersReduced ? 0 : -20, opacity: prefersReduced ? 1 : 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
+    >
       <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-8">
           <Link to="/" className="flex items-center gap-2">
@@ -86,7 +105,7 @@ export function Navbar() {
             </Link>
           </div>
         </div>
-      )}
-    </header>
+        )}
+      </motion.header>
   );
 }

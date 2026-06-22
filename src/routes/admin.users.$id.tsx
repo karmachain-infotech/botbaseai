@@ -1,7 +1,8 @@
-// @ts-nocheck
+import React from "react";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { adminGetUser, adminUpdateUser, adminDeleteUser } from "@/lib/server-functions/admin";
+import type { AdminUserDetail, AdminChatbot } from "@/lib/types/admin";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { ArrowLeft, Shield, Trash2, Star, CreditCard, Bot, MessageSquare, Activity } from "lucide-react";
@@ -15,13 +16,26 @@ function AdminUserDetail() {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error } = useQuery<{
+    user: AdminUserDetail;
+    chatbots: (AdminChatbot & { model: string })[];
+    stripeSubscription: Record<string, unknown> | null;
+    messagesThisMonth: number;
+    activityLog: { id: string; action: string; metadata: Record<string, unknown> | null; created_at: string }[];
+  }>({
     queryKey: ["admin-user", id],
-    queryFn: () => adminGetUser({ data: { userId: id } }),
+    queryFn: () =>
+      adminGetUser({ data: { userId: id } }) as Promise<{
+        user: AdminUserDetail;
+        chatbots: (AdminChatbot & { model: string })[];
+        stripeSubscription: Record<string, unknown> | null;
+        messagesThisMonth: number;
+        activityLog: { id: string; action: string; metadata: Record<string, unknown> | null; created_at: string }[];
+      }>,
   });
 
   const updateMutation = useMutation({
-    mutationFn: (vars: Record<string, unknown>) =>
+    mutationFn: (vars: { plan?: string; is_admin?: boolean }) =>
       adminUpdateUser({ data: { userId: id, ...vars } }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-user", id] });
@@ -146,10 +160,10 @@ function AdminUserDetail() {
                 <CreditCard className="h-4 w-4" /> Stripe Subscription
               </h2>
               <div className="space-y-2 text-sm">
-                <div className="flex justify-between"><span className="text-zinc-500">Status</span><span className="text-white capitalize">{stripeSubscription.status}</span></div>
-                <div className="flex justify-between"><span className="text-zinc-500">Period End</span><span className="text-white">{new Date(stripeSubscription.currentPeriodEnd).toLocaleDateString()}</span></div>
+                <div className="flex justify-between"><span className="text-zinc-500">Status</span><span className="text-white capitalize">{stripeSubscription.status as string}</span></div>
+                <div className="flex justify-between"><span className="text-zinc-500">Period End</span><span className="text-white">{new Date(stripeSubscription.currentPeriodEnd as string).toLocaleDateString()}</span></div>
                 <div className="flex justify-between"><span className="text-zinc-500">Cancel at Period End</span><span className="text-white">{stripeSubscription.cancelAtPeriodEnd ? "Yes" : "No"}</span></div>
-                {(stripeSubscription.items || []).map((item, i) => (
+                {((stripeSubscription.items ?? []) as any[]).map((item: any, i: number) => (
                   <div key={i} className="flex justify-between">
                     <span className="text-zinc-500">Amount</span>
                     <span className="text-white">${item.amount}/{item.interval}</span>
@@ -207,7 +221,7 @@ function AdminUserDetail() {
   );
 }
 
-function StatCard({ icon: Icon, label, value }: { icon: any; label: string; value: string | number }) {
+function StatCard({ icon: Icon, label, value }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string | number }) {
   return (
     <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
       <div className="flex items-center gap-2 text-zinc-400">

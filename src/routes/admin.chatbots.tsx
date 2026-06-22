@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { adminListAllChatbots, adminDeleteChatbot } from "@/lib/server-functions/admin";
@@ -6,6 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { useState } from "react";
 import { Search, Eye, Trash2, Bot } from "lucide-react";
+import type { AdminChatbot } from "@/lib/types/admin";
 
 export const Route = createFileRoute("/admin/chatbots")({
   component: AdminChatbots,
@@ -19,7 +19,7 @@ function AdminChatbots() {
   const pathname = useRouterState({ select: s => s.location.pathname });
   const isDetail = pathname !== "/admin/chatbots" && pathname.startsWith("/admin/chatbots");
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error } = useQuery<{ chatbots: AdminChatbot[]; total: number; totalPages: number }>({
     queryKey: ["admin-chatbots", search, statusFilter, page],
     queryFn: () => adminListAllChatbots({ data: { search, status: statusFilter, page } }),
     keepPreviousData: true,
@@ -75,7 +75,7 @@ function AdminChatbots() {
               {(!data?.chatbots || data.chatbots.length === 0) && (
                 <tr><td colSpan={6} className="px-4 py-8 text-center text-zinc-500">No chatbots found</td></tr>
               )}
-              {data?.chatbots.map(bot => (
+              {data?.chatbots.map((bot: AdminChatbot) => (
                 <tr key={bot.id} className="bg-zinc-950/50 hover:bg-zinc-900/50">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
@@ -145,7 +145,7 @@ function Pagination({ page, totalPages, onPage }: { page: number; totalPages: nu
         className="rounded-lg border border-zinc-800 px-2.5 py-1.5 text-xs text-zinc-400 hover:bg-zinc-800 hover:text-white disabled:opacity-40 disabled:pointer-events-none">Prev</button>
       {pages.map((p, i) =>
         p === "..." ? <span key={`e${i}`} className="px-1 text-xs text-zinc-600">...</span>
-        : <button key={p} onClick={() => onPage(p as number)}
+              : <button key={p} onClick={() => { if (typeof p === 'number') onPage(p); }}
             className={`min-w-[32px] rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors ${p === page ? "bg-red-600 text-white" : "text-zinc-400 hover:bg-zinc-800 hover:text-white"}`}>{p}</button>
       )}
       <button disabled={page >= totalPages} onClick={() => onPage(page + 1)}

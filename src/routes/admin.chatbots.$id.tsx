@@ -1,10 +1,11 @@
-// @ts-nocheck
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { adminGetChatbot, adminDeleteChatbot } from "@/lib/server-functions/admin";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { ArrowLeft, Bot, User, MessageSquare, FileText, Trash2 } from "lucide-react";
+import React from "react";
+import type { AdminChatbotDetail, AdminSource, AdminUser } from "@/lib/types/admin";
 
 export const Route = createFileRoute("/admin/chatbots/$id")({
   component: AdminChatbotDetail,
@@ -15,7 +16,7 @@ function AdminChatbotDetail() {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error } = useQuery<{ chatbot: AdminChatbotDetail; owner: AdminUser; sources: AdminSource[]; totalConversations: number }>({
     queryKey: ["admin-chatbot", id],
     queryFn: () => adminGetChatbot({ data: { chatbotId: id } }),
   });
@@ -121,7 +122,7 @@ function AdminChatbotDetail() {
   );
 }
 
-function StatCard({ icon: Icon, label, value }: { icon: any; label: string; value: string | number }) {
+function StatCard({ icon: Icon, label, value }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string | number }) {
   return (
     <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
       <div className="flex items-center gap-2 text-zinc-400">

@@ -122,6 +122,7 @@
     setImportant(bubble, "box-shadow", "0 4px 20px rgba(0,0,0,0.3)");
     setImportant(bubble, "background", primary);
     bubble.style.setProperty("--bb-primary", primary);
+    bubble.setAttribute("aria-label", "Open chat");
     bubble.innerHTML =
       '<svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12z"/><path d="M7 9h10v2H7zM7 12h7v2H7z"/></svg>';
     bubble.onclick = toggleWindow;
@@ -160,7 +161,7 @@
       '<div id="bb-header-name">' + (cfg.botName || "BotbaseAI Agent") + "</div>" +
       '<div id="bb-header-status">Online</div>' +
       "</div>" +
-      '<button id="bb-close">&times;</button>';
+      '<button id="bb-close" aria-label="Close chat">&times;</button>';
     header.querySelector("#bb-close").onclick = toggleWindow;
     win.appendChild(header);
 
@@ -194,8 +195,8 @@
     setImportant(inputArea, "display", "flex");
     setImportant(inputArea, "gap", "8px");
     inputArea.innerHTML =
-      '<input id="bb-input" placeholder="Type a message..." style="flex:1!important;border:none!important;border-radius:10px!important;padding:10px 14px!important;font-size:14px!important;outline:none!important;background:' + darken(bg, 20) + "!important;color:" + (cfg.textColor || "#fff") + '!important"/>' +
-      '<button id="bb-send" style="border:none!important;border-radius:10px!important;width:40px!important;height:40px!important;cursor:pointer!important;display:flex!important;align-items:center!important;justify-content:center!important;background:' + primary + '!important;">' +
+      '<input id="bb-input" placeholder="Type a message..." aria-label="Type your message" style="flex:1!important;border:none!important;border-radius:10px!important;padding:10px 14px!important;font-size:14px!important;outline:none!important;background:' + darken(bg, 20) + "!important;color:" + (cfg.textColor || "#fff") + '!important"/>' +
+      '<button id="bb-send" aria-label="Send message" style="border:none!important;border-radius:10px!important;width:40px!important;height:40px!important;cursor:pointer!important;display:flex!important;align-items:center!important;justify-content:center!important;background:' + primary + '!important;">' +
       '<svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>' +
       "</button>";
     win.appendChild(inputArea);

@@ -3,6 +3,8 @@ import { useState, useEffect, useRef } from "react";
 import { Bot, Send, ArrowLeft, Sparkles, BarChart3, Settings, FileText, Code2, Activity } from "lucide-react";
 import { getChatbot } from "@/lib/server-functions/chatbots";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useThinkingAnimation } from "@/hooks/use-thinking-animation";
+import { useTypewriter } from "@/hooks/use-typewriter";
 import type { Chatbot } from "@/types/database";
 
 export const Route = createFileRoute("/dashboard/agents/$id/")({
@@ -30,35 +32,12 @@ function AgentPlayground() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
-  const [isTyping, setIsTyping] = useState(false);
-  const [displayedText, setDisplayedText] = useState("");
   const [fullText, setFullText] = useState("");
   const [error, setError] = useState("");
   const chatEnd = useRef<HTMLDivElement>(null);
 
-  const [dotCount, setDotCount] = useState(1);
-  useEffect(() => {
-    if (!thinking) {
-      setDotCount(1);
-      return;
-    }
-    const interval = setInterval(() => {
-      setDotCount((prev) => (prev < 3 ? prev + 1 : 1));
-    }, 400);
-    return () => clearInterval(interval);
-  }, [thinking]);
-
-  useEffect(() => {
-    if (!isTyping) return;
-    if (displayedText.length < fullText.length) {
-      const timer = setTimeout(() => {
-        setDisplayedText(fullText.slice(0, displayedText.length + 1));
-      }, 25);
-      return () => clearTimeout(timer);
-    } else {
-      setIsTyping(false);
-    }
-  }, [isTyping, displayedText, fullText]);
+  const { displayedText, isTyping } = useTypewriter(fullText);
+  const dots = useThinkingAnimation(thinking);
 
   useEffect(() => {
     chatEnd.current?.scrollIntoView({ behavior: "smooth" });
@@ -119,8 +98,6 @@ function AgentPlayground() {
       setThinking(false);
       setMessages((prev) => [...prev, { role: "assistant", content: accumulated }]);
       setFullText(accumulated);
-      setDisplayedText("");
-      setIsTyping(true);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Something went wrong";
       console.error("Chat error:", err);
@@ -252,7 +229,7 @@ function AgentPlayground() {
           {thinking && (
             <div className="flex justify-start">
               <div className="max-w-[80%] rounded-2xl bg-secondary px-4 py-3 text-sm text-foreground">
-                Thinking{".".repeat(dotCount)}
+                Thinking{dots}
               </div>
             </div>
           )}
