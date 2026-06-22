@@ -44,9 +44,7 @@ export function Footer() {
         <div className="grid gap-10 md:grid-cols-[1.5fr_repeat(3,1fr)]">
           <div>
             <Link to="/" className="flex items-center gap-2">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-brand font-bold text-primary-foreground">
-                B
-              </span>
+              <img src="/logos.svg" alt="BotbaseAI" className="h-8 w-8" />
               <span className="text-lg font-bold tracking-tight">BotbaseAI</span>
             </Link>
             <p className="mt-4 max-w-xs text-sm text-muted-foreground">

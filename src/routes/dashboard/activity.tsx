@@ -1,9 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
-import { MessageSquare, ArrowLeft, CheckCircle, AlertCircle, ArrowUpRight, Clock, Bot } from "lucide-react";
+import { MessageSquare, CheckCircle, AlertCircle, ArrowUpRight, Clock, Bot, ChevronLeft, ChevronRight } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { createClient } from "@/lib/supabase/client";
 import type { ConversationStatus } from "@/types/database";
+
+const PAGE_SIZE = 30;
 
 interface ConversationRecord {
   id: string;
@@ -33,64 +35,66 @@ const statusFilters: (ConversationStatus | "all")[] = ["all", "open", "resolved"
 
 function DashboardActivity() {
   const { user, loading: authLoading } = useAuth();
-  const supabase = createClient();
+  const supabaseRef = useRef(createClient());
   const [conversations, setConversations] = useState<ConversationRecord[]>([]);
   const [filter, setFilter] = useState<ConversationStatus | "all">("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState<ConversationRecord | null>(null);
   const [messages, setMessages] = useState<any[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const botDataRef = useRef<{ botMap: Map<string, string>; botIds: string[] } | null>(null);
   const mountedRef = useRef(true);
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
   useEffect(() => {
     mountedRef.current = true;
-    if (!authLoading && user) loadConversations();
+    if (!authLoading && user) loadInitial();
     if (!authLoading && !user) setLoading(false);
     return () => { mountedRef.current = false; };
   }, [user, authLoading]);
 
-  async function loadConversations() {
-    try {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (!authUser) return;
+  useEffect(() => {
+    if (botDataRef.current) {
+      setPage(1);
+      loadPage(1);
+    }
+  }, [filter]);
 
-      const { data: chatbots } = await supabase
+  async function loadInitial() {
+    const supabase = supabaseRef.current;
+    try {
+      if (!user) return;
+
+      const { data: chatbots, error: botErr } = await supabase
         .from("chatbots")
         .select("id, name")
-        .eq("user_id", authUser.id);
+        .eq("user_id", user.id);
 
-      if (!mountedRef.current || !chatbots || chatbots.length === 0) {
-        if (mountedRef.current) setLoading(false);
+      if (botErr) {
+        console.error("Chatbots query error:", botErr);
+        if (mountedRef.current) setError("Failed to load chatbots: " + botErr.message);
+        return;
+      }
+
+      if (!mountedRef.current) return;
+
+      if (!chatbots || chatbots.length === 0) {
+        if (mountedRef.current) {
+          setConversations([]);
+          setLoading(false);
+        }
         return;
       }
 
       const botMap = new Map(chatbots.map(b => [b.id, b.name]));
       const botIds = chatbots.map(b => b.id);
+      botDataRef.current = { botMap, botIds };
 
-      const { data: conversations } = await supabase
-        .from("conversations")
-        .select("id, chatbot_id, session_id, user_identifier, status, escalated, rating, created_at, updated_at")
-        .in("chatbot_id", botIds)
-        .order("updated_at", { ascending: false })
-        .limit(50);
-
-      if (!mountedRef.current) return;
-
-      const records: ConversationRecord[] = (conversations ?? []).map(c => ({
-        ...c,
-        chatbot_name: botMap.get(c.chatbot_id) ?? "Unknown",
-        message_count: 0,
-      }));
-
-      for (const record of records) {
-        const { count } = await supabase
-          .from("messages")
-          .select("id", { count: "exact", head: true })
-          .eq("conversation_id", record.id);
-        record.message_count = count ?? 0;
-      }
-
-      if (mountedRef.current) setConversations(records);
+      setPage(1);
+      await loadPage(1, botMap, botIds);
     } catch (err) {
       console.error("Failed to load conversations:", err);
       if (mountedRef.current) setError("Failed to load activity data.");
@@ -99,14 +103,102 @@ function DashboardActivity() {
     }
   }
 
+  async function loadPage(
+    pageNum: number,
+    botMap?: Map<string, string>,
+    botIds?: string[],
+  ) {
+    const supabase = supabaseRef.current;
+    const botData = botDataRef.current;
+    const map = botMap ?? botData?.botMap;
+    const ids = botIds ?? botData?.botIds;
+    if (!map || !ids) return;
+
+    const from = (pageNum - 1) * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
+
+    const { count: total } = await supabase
+      .from("conversations")
+      .select("id", { count: "exact", head: true })
+      .in("chatbot_id", ids);
+
+    const { data: convData, error: convErr } = await supabase
+      .from("conversations")
+      .select("id, chatbot_id, session_id, user_identifier, status, escalated, rating, created_at, updated_at")
+      .in("chatbot_id", ids)
+      .order("updated_at", { ascending: false })
+      .range(from, to);
+
+    if (!mountedRef.current) return;
+
+    if (convErr) {
+      console.error("Conversations query error:", convErr);
+      if (mountedRef.current) setError("Failed to load conversations: " + convErr.message);
+      return;
+    }
+
+    const raw: ConversationRecord[] = (convData ?? []).map(c => ({
+      ...c,
+      chatbot_name: map.get(c.chatbot_id) ?? "Unknown",
+      message_count: 0,
+    }));
+
+    for (const record of raw) {
+      const { count } = await supabase
+        .from("messages")
+        .select("id", { count: "exact", head: true })
+        .eq("conversation_id", record.id);
+      record.message_count = count ?? 0;
+    }
+
+    const grouped = new Map<string, ConversationRecord>();
+    for (const r of raw) {
+      const existing = grouped.get(r.session_id);
+      if (existing) {
+        existing.message_count += r.message_count;
+        if (new Date(r.updated_at) > new Date(existing.updated_at)) {
+          existing.status = r.status;
+          existing.escalated = r.escalated;
+          existing.rating = r.rating;
+          existing.updated_at = r.updated_at;
+        }
+      } else {
+        grouped.set(r.session_id, { ...r });
+      }
+    }
+
+    if (mountedRef.current) {
+      setConversations(Array.from(grouped.values()));
+      setTotalCount(total ?? 0);
+    }
+  }
+
+  function goToPage(newPage: number) {
+    if (newPage < 1 || newPage > totalPages) return;
+    setPage(newPage);
+    setSelected(null);
+    setMessages([]);
+    setLoading(true);
+    loadPage(newPage).finally(() => {
+      if (mountedRef.current) setLoading(false);
+    });
+  }
+
   async function openConversation(conv: ConversationRecord) {
+    const supabase = supabaseRef.current;
     setSelected(conv);
     setMessages([]);
     try {
+      const { data: convIds } = await supabase
+        .from("conversations")
+        .select("id")
+        .eq("session_id", conv.session_id);
+      const ids = (convIds ?? []).map(c => c.id);
+      if (ids.length === 0) return;
       const { data } = await supabase
         .from("messages")
         .select("*")
-        .eq("conversation_id", conv.id)
+        .in("conversation_id", ids)
         .order("created_at", { ascending: true });
       if (mountedRef.current) setMessages(data ?? []);
     } catch (err) {
@@ -170,10 +262,22 @@ function DashboardActivity() {
       </div>
 
       {filtered.length === 0 ? (
-        <div className="mt-8 flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border p-12 text-center">
+        <div className="mt-8 flex flex-col items-center gap-4 rounded-2xl border border-dashed border-border p-12 text-center">
           <MessageSquare className="h-12 w-12 text-muted-foreground/40" />
-          <p className="text-lg font-semibold">No conversations</p>
-          <p className="text-sm text-muted-foreground">Conversations will appear here once your agents interact with users.</p>
+          <div>
+            <p className="text-lg font-semibold">No conversations</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {filter !== "all"
+                ? `No ${filter} conversations found. Try a different filter.`
+                : "Conversations will appear here once your agents interact with users."}
+            </p>
+          </div>
+          <Link
+            to="/dashboard"
+            className="inline-flex items-center gap-2 rounded-lg bg-gradient-brand px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+          >
+            <Bot className="h-4 w-4" /> View your agents
+          </Link>
         </div>
       ) : (
         <div className="mt-4 grid gap-4 lg:grid-cols-3">
@@ -213,6 +317,43 @@ function DashboardActivity() {
                 </div>
               </button>
             ))}
+            {totalPages > 1 && filter === "all" && (
+              <div className="flex items-center justify-center gap-2 pt-4">
+                <button
+                  onClick={() => goToPage(page - 1)}
+                  disabled={page <= 1}
+                  className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:text-foreground disabled:opacity-30"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+                  .map((p, idx, arr) => (
+                    <span key={p} className="flex items-center gap-1">
+                      {idx > 0 && arr[idx - 1] !== p - 1 && (
+                        <span className="px-1 text-muted-foreground">...</span>
+                      )}
+                      <button
+                        onClick={() => goToPage(p)}
+                        className={`flex h-9 w-9 items-center justify-center rounded-lg text-sm font-medium transition-colors ${
+                          page === p
+                            ? "bg-gradient-brand text-primary-foreground"
+                            : "border border-border bg-card text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    </span>
+                  ))}
+                <button
+                  onClick={() => goToPage(page + 1)}
+                  disabled={page >= totalPages}
+                  className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:text-foreground disabled:opacity-30"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            )}
           </div>
 
           {selected && (

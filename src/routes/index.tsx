@@ -125,6 +125,9 @@ function Landing() {
       <section className="relative overflow-hidden">
         <div className="pointer-events-none absolute inset-0 hero-glow" />
         <div className="relative mx-auto max-w-5xl px-4 pt-24 pb-16 text-center sm:px-6 lg:px-8">
+          <div className="mx-auto mb-6">
+            <img src="/logotext.png" alt="BotbaseAI" className="mx-auto h-auto max-h-24" />
+          </div>
           <div className="mx-auto mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-4 py-1.5 text-xs font-medium text-muted-foreground">
             <Sparkles className="h-3.5 w-3.5 text-primary" /> Now with reasoning models
           </div>

@@ -26,9 +26,7 @@ export function DashboardSidebar({ isOpen, onClose }: SidebarProps) {
     <>
       <div className="flex h-16 items-center justify-between gap-2 border-b border-border px-6">
         <Link to="/" className="flex items-center gap-2" onClick={handleNav}>
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-brand font-bold text-primary-foreground">
-            B
-          </span>
+          <img src="/logos.svg" alt="BotbaseAI" className="h-8 w-8" />
           <span className="text-lg font-bold tracking-tight">BotbaseAI</span>
         </Link>
         <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground md:hidden">

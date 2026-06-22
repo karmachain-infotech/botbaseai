@@ -1,6 +1,7 @@
-import { Link, useRouter } from "@tanstack/react-router";
+import { Link, useRouter, useNavigate } from "@tanstack/react-router";
 import { Bell, Search, LogOut, Settings, Menu } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { useState, type FormEvent } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,9 +17,17 @@ interface TopbarProps {
 export function DashboardTopbar({ onToggleSidebar }: TopbarProps) {
   const { user, signOut } = useAuth();
   const router = useRouter();
+  const navigate = useNavigate();
+  const [searchQuery, setSearchQuery] = useState("");
   const initials = user?.email
     ? user.email.slice(0, 2).toUpperCase()
     : "?";
+
+  function handleSearch(e: FormEvent) {
+    e.preventDefault();
+    const q = searchQuery.trim();
+    navigate({ to: "/dashboard", search: q ? { q } : {} });
+  }
 
   async function handleSignOut() {
     await signOut();
@@ -32,20 +41,22 @@ export function DashboardTopbar({ onToggleSidebar }: TopbarProps) {
           <Menu className="h-5 w-5" />
         </button>
         <Link to="/" className="flex items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-brand font-bold text-primary-foreground">
-            B
-          </span>
+          <img src="/logos.svg" alt="BotbaseAI" className="h-8 w-8" />
         </Link>
       </div>
 
-      <div className="relative w-full max-w-md">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      <form onSubmit={handleSearch} className="relative w-full max-w-md">
+        <button type="submit" className="absolute left-3 top-1/2 -translate-y-1/2 cursor-pointer">
+          <Search className="h-4 w-4 text-muted-foreground" />
+        </button>
         <input
           type="search"
           placeholder="Search agents, conversations..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full rounded-lg border border-input bg-card py-2 pl-9 pr-3 text-sm outline-none focus:border-primary"
         />
-      </div>
+      </form>
 
       <div className="flex items-center gap-3">
         <button

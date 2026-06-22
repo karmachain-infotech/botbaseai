@@ -1,9 +1,9 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import {
   Bot, Plus, Pencil, BarChart3, Code2, Trash2,
-  MessageSquare, Settings, FileText, Zap,
+  MessageSquare, Settings, FileText, Zap, X,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { listChatbots, deleteChatbot } from "@/lib/server-functions/chatbots";
@@ -11,7 +11,14 @@ import { createClient } from "@/lib/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Chatbot } from "@/types/database";
 
+interface DashboardSearch {
+  q?: string;
+}
+
 export const Route = createFileRoute("/dashboard/")({
+  validateSearch: (search: Record<string, unknown>): DashboardSearch => ({
+    q: typeof search.q === "string" ? search.q : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "My AI Agents — BotbaseAI" },
@@ -23,6 +30,7 @@ export const Route = createFileRoute("/dashboard/")({
 
 function DashboardHome() {
   const { user, loading: authLoading } = useAuth();
+  const { q: searchQuery } = useSearch({ from: "/dashboard/" });
   const [agents, setAgents] = useState<Chatbot[]>([]);
   const [stats, setStats] = useState({
     totalMessages: 0,
@@ -125,21 +133,39 @@ function DashboardHome() {
     );
   }
 
+  const filteredAgents = searchQuery
+    ? agents.filter(a => a.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    : agents;
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">My AI Agents</h1>
+          <h1 className="text-2xl font-bold tracking-tight">
+            {searchQuery ? <>Search: &ldquo;{searchQuery}&rdquo;</> : "My AI Agents"}
+          </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Build, train and deploy AI support agents for your business.
+            {searchQuery
+              ? `${filteredAgents.length} agent${filteredAgents.length !== 1 ? "s" : ""} found`
+              : "Build, train and deploy AI support agents for your business."}
           </p>
         </div>
-        <Link
-          to="/dashboard/create"
-          className="inline-flex items-center gap-2 rounded-lg bg-gradient-brand px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
-        >
-          <Plus className="h-4 w-4" /> Create new agent
-        </Link>
+        <div className="flex items-center gap-3">
+          {searchQuery && (
+            <Link
+              to="/dashboard"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <X className="h-4 w-4" /> Clear
+            </Link>
+          )}
+          <Link
+            to="/dashboard/create"
+            className="inline-flex items-center gap-2 rounded-lg bg-gradient-brand px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+          >
+            <Plus className="h-4 w-4" /> Create new agent
+          </Link>
+        </div>
       </div>
 
       {error && (
@@ -166,12 +192,24 @@ function DashboardHome() {
 
       <div className="mt-8">
         <h2 className="text-lg font-semibold">
-          Your agents
-          {agents.length > 0 && (
-            <span className="ml-2 text-sm font-normal text-muted-foreground">({agents.length})</span>
+          {searchQuery ? "Search results" : "Your agents"}
+          {filteredAgents.length > 0 && (
+            <span className="ml-2 text-sm font-normal text-muted-foreground">({filteredAgents.length})</span>
           )}
         </h2>
-        {agents.length === 0 && !error ? (
+        {filteredAgents.length === 0 && searchQuery ? (
+          <div className="mt-6 flex flex-col items-center gap-4 rounded-2xl border border-dashed border-border p-12 text-center">
+            <Bot className="h-12 w-12 text-muted-foreground/40" />
+            <div>
+              <p className="text-lg font-semibold">No agents found</p>
+              <p className="mt-1 text-sm text-muted-foreground">No agents match &ldquo;{searchQuery}&rdquo;. Try a different search term.</p>
+            </div>
+            <Link to="/dashboard"
+              className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-semibold transition-colors hover:bg-secondary">
+              Clear search
+            </Link>
+          </div>
+        ) : agents.length === 0 && !error ? (
           <div className="mt-6 flex flex-col items-center gap-4 rounded-2xl border border-dashed border-border p-12 text-center">
             <Bot className="h-12 w-12 text-muted-foreground/40" />
             <div>
@@ -185,7 +223,7 @@ function DashboardHome() {
           </div>
         ) : (
           <div className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {agents.map((agent) => (
+            {filteredAgents.map((agent) => (
               <AgentCard key={agent.id} agent={agent} onDelete={handleDelete} />
             ))}
             <Link to="/dashboard/create"
