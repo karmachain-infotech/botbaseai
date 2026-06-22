@@ -1,6 +1,6 @@
 import { createFileRoute, useRouter, Link } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
-import { User, CreditCard, Lock, Trash2, ArrowLeft, Check, X, AlertTriangle, ExternalLink } from "lucide-react";
+import { User, CreditCard, Lock, Trash2, Check, ExternalLink } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { getUserProfile, updateProfile, changePassword, deleteAccount } from "@/lib/server-functions/users";
 import { createPortalSession, syncSubscription } from "@/lib/server-functions/stripe";
@@ -35,6 +35,7 @@ function AccountSettings() {
   const [deleting, setDeleting] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deleteError, setDeleteError] = useState("");
+  const [loadError, setLoadError] = useState("");
 
   const mountedRef = useRef(true);
 
@@ -46,6 +47,7 @@ function AccountSettings() {
 
   async function loadProfile() {
     try {
+      setLoadError("");
       await syncSubscription();
       const p = await getUserProfile();
       if (mountedRef.current) {
@@ -53,7 +55,10 @@ function AccountSettings() {
         setEditName((p as unknown as AppUser).name ?? "");
       }
     } catch {
-      if (mountedRef.current) console.error("Failed to load profile");
+      if (mountedRef.current) {
+        setLoadError("Failed to load profile.");
+        console.error("Failed to load profile");
+      }
     } finally {
       if (mountedRef.current) setLoading(false);
     }
@@ -133,6 +138,16 @@ function AccountSettings() {
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
       <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
       <p className="mt-1 text-sm text-muted-foreground">Manage your account and preferences.</p>
+
+      {loadError && (
+        <div className="mt-4 flex items-center justify-between rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+          <span>{loadError}</span>
+          <button onClick={() => { setLoadError(""); setLoading(true); loadProfile(); }}
+            className="ml-3 shrink-0 rounded-lg bg-destructive/20 px-3 py-1 text-xs font-medium text-destructive hover:bg-destructive/30">
+            Retry
+          </button>
+        </div>
+      )}
 
       <div className="mt-8 space-y-6">
         {/* Profile */}

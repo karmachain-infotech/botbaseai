@@ -61,7 +61,13 @@ function AgentAnalytics() {
         <Link to="/dashboard" className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
           <ArrowLeft className="h-4 w-4" /> Back
         </Link>
-        <div className="mt-8 rounded-lg bg-destructive/10 p-4 text-sm text-destructive">{error}</div>
+        <div className="mt-4 flex items-center justify-between rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+          <span>{error}</span>
+          <button onClick={() => { setError(""); setLoading(true); loadAnalytics(); }}
+            className="ml-3 shrink-0 rounded-lg bg-destructive/20 px-3 py-1 text-xs font-medium text-destructive hover:bg-destructive/30">
+            Retry
+          </button>
+        </div>
       </div>
     );
   }

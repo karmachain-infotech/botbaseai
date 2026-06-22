@@ -95,10 +95,13 @@ function DashboardIntegrations() {
   const [loadingAgents, setLoadingAgents] = useState(false);
   const [savedSmtp, setSavedSmtp] = useState(false);
 
+  const [agentsError, setAgentsError] = useState("");
+
   useEffect(() => {
     if (selected?.id === "website-widget" && agents.length === 0) {
       setLoadingAgents(true);
-      listChatbots().then((bots) => setAgents(bots as unknown as Chatbot[])).catch(() => {}).finally(() => setLoadingAgents(false));
+      setAgentsError("");
+      listChatbots().then((bots) => setAgents(bots as unknown as Chatbot[])).catch(() => setAgentsError("Failed to load agents.")).finally(() => setLoadingAgents(false));
     }
     if (selected?.id === "email") {
       const saved = localStorage.getItem("bb_smtp_config");
@@ -371,6 +374,16 @@ www.example.com`}</pre>
                     <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
                     <div className="relative flex justify-center"><span className="bg-card px-2 text-xs text-muted-foreground">Your Agents</span></div>
                   </div>
+
+                  {agentsError && (
+                    <div className="flex items-center justify-between rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+                      <span>{agentsError}</span>
+                      <button onClick={() => { setAgentsError(""); setLoadingAgents(true); listChatbots().then((bots) => setAgents(bots as unknown as Chatbot[])).catch(() => setAgentsError("Failed to load agents.")).finally(() => setLoadingAgents(false)); }}
+                        className="ml-3 shrink-0 rounded-lg bg-destructive/20 px-3 py-1 text-xs font-medium text-destructive hover:bg-destructive/30">
+                        Retry
+                      </button>
+                    </div>
+                  )}
 
                   {/* Agent list */}
                   {loadingAgents ? (

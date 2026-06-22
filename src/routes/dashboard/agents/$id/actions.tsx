@@ -3,6 +3,17 @@ import { useState, useEffect, useRef } from "react";
 import { ArrowLeft, Plus, Trash2, Zap, ToggleLeft, ToggleRight } from "lucide-react";
 import { listActions, createAction, updateAction, deleteAction } from "@/lib/server-functions/actions";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 import type { Aiaction, AiactionMethod } from "@/types/database";
 
 export const Route = createFileRoute("/dashboard/agents/$id/actions")({
@@ -82,8 +93,10 @@ function AgentActions() {
     }
   }
 
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+
   async function handleDelete(actionId: string) {
-    if (!confirm("Delete this action?")) return;
+    setDeleteTarget(null);
     try {
       await deleteAction({ data: { id: actionId } });
       setActions((prev) => prev.filter((a) => a.id !== actionId));
@@ -197,10 +210,28 @@ function AgentActions() {
                   className="text-muted-foreground hover:text-foreground">
                   {action.enabled ? <ToggleRight className="h-5 w-5 text-primary" /> : <ToggleLeft className="h-5 w-5" />}
                 </button>
-                <button onClick={() => handleDelete(action.id)}
-                  className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive">
-                  <Trash2 className="h-4 w-4" />
-                </button>
+                <AlertDialog open={deleteTarget === action.id} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+                  <AlertDialogTrigger asChild>
+                    <button onClick={() => setDeleteTarget(action.id)}
+                      className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive">
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete this action?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will permanently delete <strong>{action.name}</strong>. Your agent will no longer be able to use this action. This cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => handleDelete(action.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             </div>
           ))

@@ -4,6 +4,17 @@ import { toast } from "sonner";
 import { ArrowLeft, Save, Trash2, Bot, Shield, Palette, AlertTriangle, Code } from "lucide-react";
 import { getChatbot, updateChatbot, deleteChatbot } from "@/lib/server-functions/chatbots";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 import type { Chatbot } from "@/types/database";
 
 export const Route = createFileRoute("/dashboard/agents/$id/settings")({
@@ -302,10 +313,28 @@ function AgentSettings() {
                   <p className="text-sm text-muted-foreground">This will permanently delete the agent and all its training data.</p>
                 </div>
               </div>
-              <button onClick={handleDelete} disabled={deleting}
-                className="mt-4 inline-flex items-center gap-2 rounded-lg bg-destructive px-4 py-2.5 text-sm font-semibold text-destructive-foreground transition-opacity hover:opacity-90 disabled:opacity-60">
-                <Trash2 className="h-4 w-4" /> {deleting ? "Deleting..." : "Delete agent"}
-              </button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <button disabled={deleting}
+                    className="mt-4 inline-flex items-center gap-2 rounded-lg bg-destructive px-4 py-2.5 text-sm font-semibold text-destructive-foreground transition-opacity hover:opacity-90 disabled:opacity-60">
+                    <Trash2 className="h-4 w-4" /> {deleting ? "Deleting..." : "Delete agent"}
+                  </button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete this agent?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently delete <strong>{agent.name}</strong> and all of its training data, conversation history, and settings. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </div>
         )}

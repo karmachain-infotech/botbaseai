@@ -80,9 +80,9 @@ export function DashboardSidebar({ isOpen, onClose }: SidebarProps) {
 
       {/* Mobile drawer */}
       {isOpen && (
-        <div className="fixed inset-0 z-50 md:hidden">
-          <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-          <aside className="relative flex w-72 max-w-[85vw] flex-col bg-sidebar shadow-xl">
+        <div className="fixed inset-0 z-50 flex md:hidden">
+          <div className="fixed inset-0 bg-black/50" onClick={onClose} />
+          <aside className="relative z-10 flex w-72 max-w-[85vw] flex-col bg-sidebar shadow-xl">
             {sidebarContent}
           </aside>
         </div>

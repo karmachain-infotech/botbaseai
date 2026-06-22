@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, MessageSquare, CheckCircle, AlertTriangle, ArrowUpRight, Clock } from "lucide-react";
+import { ArrowLeft, CheckCircle, AlertTriangle, ArrowUpRight, Clock } from "lucide-react";
 import { listConversations, getConversation } from "@/lib/server-functions/conversations";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -76,7 +76,13 @@ function AgentActivity() {
       </div>
 
       {error && (
-        <div className="mt-4 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
+        <div className="mt-4 flex items-center justify-between rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+          <span>{error}</span>
+          <button onClick={() => { setError(""); setLoading(true); loadConversations(); }}
+            className="ml-3 shrink-0 rounded-lg bg-destructive/20 px-3 py-1 text-xs font-medium text-destructive hover:bg-destructive/30">
+            Retry
+          </button>
+        </div>
       )}
 
       <div className="mt-6 flex gap-2">

@@ -242,7 +242,13 @@ function DashboardActivity() {
       </div>
 
       {error && (
-        <div className="mt-4 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
+        <div className="mt-4 flex items-center justify-between rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+          <span>{error}</span>
+          <button onClick={() => { setError(""); setLoading(true); loadInitial(); }}
+            className="ml-3 shrink-0 rounded-lg bg-destructive/20 px-3 py-1 text-xs font-medium text-destructive hover:bg-destructive/30">
+            Retry
+          </button>
+        </div>
       )}
 
       <div className="mt-6 flex gap-2">

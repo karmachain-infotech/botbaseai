@@ -4,6 +4,17 @@ import { toast } from "sonner";
 import { ArrowLeft, FileText, Globe, Type, HelpCircle, Trash2, Upload, RefreshCw, CheckCircle, XCircle, Clock } from "lucide-react";
 import { listSources, addSource, deleteSource, retrainSource } from "@/lib/server-functions/sources";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 import type { Source, SourceType } from "@/types/database";
 
 export const Route = createFileRoute("/dashboard/agents/$id/sources")({
@@ -92,8 +103,10 @@ function AgentSources() {
     }
   }
 
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+
   async function handleDelete(sourceId: string) {
-    if (!confirm("Delete this source?")) return;
+    setDeleteTarget(null);
     try {
       await deleteSource({ data: { chatbotId: id, sourceId } });
       setSources((prev) => prev.filter((s) => s.id !== sourceId));
@@ -150,7 +163,13 @@ function AgentSources() {
       </div>
 
       {error && (
-        <div className="mt-4 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
+        <div className="mt-4 flex items-center justify-between rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+          <span>{error}</span>
+          <button onClick={() => { setError(""); setLoading(true); loadSources(); }}
+            className="ml-3 shrink-0 rounded-lg bg-destructive/20 px-3 py-1 text-xs font-medium text-destructive hover:bg-destructive/30">
+            Retry
+          </button>
+        </div>
       )}
 
       <div className="mt-6 grid gap-3 sm:grid-cols-4">
@@ -256,10 +275,28 @@ function AgentSources() {
                       <RefreshCw className="h-4 w-4" />
                     </button>
                   )}
-                  <button onClick={() => handleDelete(source.id)}
-                    className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive">
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  <AlertDialog open={deleteTarget === source.id} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+                    <AlertDialogTrigger asChild>
+                      <button onClick={() => setDeleteTarget(source.id)}
+                        className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive">
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete this source?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will permanently delete <strong>{source.name}</strong>. Your agent will lose the knowledge from this source. This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleDelete(source.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               </div>
             );
