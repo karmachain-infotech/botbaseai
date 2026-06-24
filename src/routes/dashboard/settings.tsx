@@ -4,6 +4,7 @@ import { User, CreditCard, Lock, Trash2, Check, ExternalLink } from "lucide-reac
 import { useAuth } from "@/lib/auth-context";
 import { getUserProfile, updateProfile, changePassword, deleteAccount } from "@/lib/server-functions/users";
 import { createPortalSession, syncSubscription } from "@/lib/server-functions/stripe";
+import { toast } from "sonner";
 import type { User as AppUser } from "@/types/database";
 
 export const Route = createFileRoute("/dashboard/settings")({

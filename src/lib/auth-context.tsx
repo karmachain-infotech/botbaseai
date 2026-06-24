@@ -1,22 +1,25 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 import { createClient, isSupabaseConfigured } from "./supabase/client";
 import type { User } from "@supabase/supabase-js";
-import { refreshSession } from "./server-functions/auth";
+import { refreshSession, checkIsAdmin } from "./server-functions/auth";
 
 interface AuthContextValue {
   user: User | null;
+  is_admin: boolean;
   loading: boolean;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue>({
   user: null,
+  is_admin: false,
   loading: true,
   signOut: async () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const supabase = isSupabaseConfigured() ? createClient() : null;
 
@@ -36,6 +39,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         if (data.session?.user) {
           if (!cancelled) setUser(data.session.user);
+          try {
+            const result = await checkIsAdmin();
+            if (!cancelled) setIsAdmin(result.is_admin);
+          } catch {}
+          if (!cancelled) setLoading(false);
           return;
         }
 
@@ -43,7 +51,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const result = await refreshSession();
         if (result.ok && !cancelled) {
           const { data: retry } = await supabase.auth.getSession();
-          if (!cancelled) setUser(retry.session?.user ?? null);
+          if (!cancelled) {
+            setUser(retry.session?.user ?? null);
+            if (retry.session?.user) {
+              try {
+                const adminResult = await checkIsAdmin();
+                if (!cancelled) setIsAdmin(adminResult.is_admin);
+              } catch {}
+            }
+          }
         } else if (!cancelled) {
           setUser(null);
         }
@@ -79,7 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signOut }}>
+    <AuthContext.Provider value={{ user, is_admin: isAdmin, loading, signOut }}>
       {children}
     </AuthContext.Provider>
   );

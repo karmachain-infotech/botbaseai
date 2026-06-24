@@ -29,6 +29,7 @@ import { Route as DashboardIntegrationsRouteImport } from './routes/dashboard/in
 import { Route as DashboardCreateRouteImport } from './routes/dashboard.create'
 import { Route as DashboardAnalyticsRouteImport } from './routes/dashboard/analytics'
 import { Route as DashboardActivityRouteImport } from './routes/dashboard/activity'
+import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminChatbotsRouteImport } from './routes/admin.chatbots'
@@ -144,6 +145,11 @@ const DashboardActivityRoute = DashboardActivityRouteImport.update({
   path: '/activity',
   getParentRoute: () => DashboardRoute,
 } as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/auth/callback',
+  path: '/auth/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/users',
   path: '/users',
@@ -239,6 +245,7 @@ export interface FileRoutesByFullPath {
   '/admin/chatbots': typeof AdminChatbotsRouteWithChildren
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRouteWithChildren
+  '/auth/callback': typeof AuthCallbackRoute
   '/dashboard/activity': typeof DashboardActivityRoute
   '/dashboard/analytics': typeof DashboardAnalyticsRoute
   '/dashboard/create': typeof DashboardCreateRoute
@@ -273,6 +280,7 @@ export interface FileRoutesByTo {
   '/admin/chatbots': typeof AdminChatbotsRouteWithChildren
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRouteWithChildren
+  '/auth/callback': typeof AuthCallbackRoute
   '/dashboard/activity': typeof DashboardActivityRoute
   '/dashboard/analytics': typeof DashboardAnalyticsRoute
   '/dashboard/create': typeof DashboardCreateRoute
@@ -310,6 +318,7 @@ export interface FileRoutesById {
   '/admin/chatbots': typeof AdminChatbotsRouteWithChildren
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRouteWithChildren
+  '/auth/callback': typeof AuthCallbackRoute
   '/dashboard/activity': typeof DashboardActivityRoute
   '/dashboard/analytics': typeof DashboardAnalyticsRoute
   '/dashboard/create': typeof DashboardCreateRoute
@@ -348,6 +357,7 @@ export interface FileRouteTypes {
     | '/admin/chatbots'
     | '/admin/settings'
     | '/admin/users'
+    | '/auth/callback'
     | '/dashboard/activity'
     | '/dashboard/analytics'
     | '/dashboard/create'
@@ -382,6 +392,7 @@ export interface FileRouteTypes {
     | '/admin/chatbots'
     | '/admin/settings'
     | '/admin/users'
+    | '/auth/callback'
     | '/dashboard/activity'
     | '/dashboard/analytics'
     | '/dashboard/create'
@@ -418,6 +429,7 @@ export interface FileRouteTypes {
     | '/admin/chatbots'
     | '/admin/settings'
     | '/admin/users'
+    | '/auth/callback'
     | '/dashboard/activity'
     | '/dashboard/analytics'
     | '/dashboard/create'
@@ -450,6 +462,7 @@ export interface RootRouteChildren {
   ResourcesRoute: typeof ResourcesRoute
   SignupRoute: typeof SignupRoute
   SolutionsRoute: typeof SolutionsRoute
+  AuthCallbackRoute: typeof AuthCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -593,6 +606,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard/activity'
       preLoaderRoute: typeof DashboardActivityRouteImport
       parentRoute: typeof DashboardRoute
+    }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/auth/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/admin/users': {
       id: '/admin/users'
@@ -790,6 +810,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResourcesRoute: ResourcesRoute,
   SignupRoute: SignupRoute,
   SolutionsRoute: SolutionsRoute,
+  AuthCallbackRoute: AuthCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { getAdminClient } from "../supabase/admin";
 import { createClient } from "../supabase/server";
-import { CREDIT_LIMITS } from "../stripe";
+import { getCreditLimits, fireNotificationWebhook } from "./settings";
 import { DatabaseError, ValidationError, handleServerError } from "../errors";
 
 export const signup = createServerFn({ method: "POST" })
@@ -31,67 +31,24 @@ export const signup = createServerFn({ method: "POST" })
         throw new DatabaseError(authError.message);
       }
 
+      const [limits] = await Promise.all([
+        getCreditLimits(),
+      ]);
       const { error: dbError } = await supabase.from("users").insert({
         id: authData.user.id,
         email: data.email,
         name: data.name,
         plan: "free",
-        message_credits_limit: CREDIT_LIMITS.free,
+        message_credits_limit: limits.free,
       });
 
       if (dbError) throw new DatabaseError(dbError.message);
 
+      fireNotificationWebhook("user.signup", { userId: authData.user.id, email: data.email, name: data.name });
+
       return { userId: authData.user.id };
     } catch (error) {
       throw handleServerError(error, "signup");
-    }
-  });
-
-export const login = createServerFn({ method: "POST" })
-  .inputValidator(
-    z.object({
-      email: z.string().email(),
-      password: z.string(),
-    }),
-  )
-  .handler(async ({ data }) => {
-    try {
-      const supabase = getAdminClient();
-
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: data.email,
-        password: data.password,
-      });
-
-      if (authError) {
-        if (authError.message.includes("Invalid login credentials")) {
-          throw new ValidationError("Invalid email or password");
-        }
-        throw new DatabaseError(authError.message);
-      }
-
-      return { session: authData.session, user: authData.user };
-    } catch (error) {
-      throw handleServerError(error, "login");
-    }
-  });
-
-export const googleAuth = createServerFn({ method: "POST" })
-  .handler(async () => {
-    try {
-      const supabase = getAdminClient();
-
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
-        },
-      });
-
-      if (error) throw new DatabaseError(error.message);
-      return { url: data.url };
-    } catch (error) {
-      throw handleServerError(error, "googleAuth");
     }
   });
 
@@ -112,7 +69,66 @@ export const refreshSession = createServerFn({ method: "GET" })
     }
   });
 
-export const getSession = createServerFn({ method: "GET" })
+export const checkIsAdmin = createServerFn({ method: "GET" })
   .handler(async () => {
-    return { authenticated: true };
+    try {
+      const supabase = await createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return { is_admin: false };
+
+      const admin = getAdminClient();
+      const { data } = await admin
+        .from("users")
+        .select("is_admin")
+        .eq("id", user.id)
+        .single();
+
+      return { is_admin: (data as { is_admin: boolean } | null)?.is_admin ?? false };
+    } catch {
+      return { is_admin: false };
+    }
+  });
+
+export const ensureUserExists = createServerFn({ method: "POST" })
+  .handler(async () => {
+    try {
+      const supabase = await createClient();
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        return { created: false, error: "Not authenticated" };
+      }
+
+      const admin = getAdminClient();
+      const { data: existing } = await admin
+        .from("users")
+        .select("id")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (existing) {
+        return { created: false };
+      }
+
+      const [limits] = await Promise.all([getCreditLimits()]);
+      const { error: insertError } = await admin.from("users").insert({
+        id: user.id,
+        email: user.email,
+        name: user.user_metadata?.name ?? user.user_metadata?.full_name ?? user.email?.split("@")[0] ?? "User",
+        avatar_url: user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null,
+        plan: "free",
+        message_credits_limit: limits.free,
+      });
+
+      if (insertError) {
+        console.error("[ensureUserExists] Insert error:", insertError.message);
+        return { created: false, error: insertError.message };
+      }
+
+      fireNotificationWebhook("user.signup", { userId: user.id, email: user.email, name: user.user_metadata?.name });
+
+      return { created: true };
+    } catch (error) {
+      console.error("[ensureUserExists] Error:", error);
+      return { created: false, error: "Failed to ensure user exists" };
+    }
   });

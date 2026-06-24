@@ -125,7 +125,7 @@ function EmbedTest() {
               </a>
             </div>
             <div
-              className={`relative ${view === "mobile" ? "mx-auto w-[375px]" : "w-full"}`}
+              className={`relative overflow-x-auto ${view === "mobile" ? "mx-auto w-[375px] max-w-full" : "w-full"}`}
               style={{ minHeight: "520px", background: "#f8fafc" }}
             >
               <div className="flex h-full flex-col items-center justify-center p-8 text-center">

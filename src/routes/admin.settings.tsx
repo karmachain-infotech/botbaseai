@@ -8,6 +8,7 @@ import { Settings as SettingsIcon, Bell, Shield, Mail, Webhook, Palette, ToggleL
 
 interface SettingsData {
   platform_name: string;
+  platform_logo: string | null;
   announcement_banner_message: string;
   announcement_banner_enabled: boolean;
   webhook_notification_url: string;
@@ -68,7 +69,7 @@ function AdminSettings() {
   }
 
   function toggleAndSave(key: string) {
-    const next = !localSettings[key];
+    const next = !(localSettings as Record<string, unknown>)[key];
     setLocalSettings(prev => ({ ...prev, [key]: next }));
     updateMutation.mutate({ key, value: next });
   }
@@ -89,6 +90,12 @@ function AdminSettings() {
               onChange={e => updateAndSave("platform_name", e.target.value)}
               className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-white outline-none focus:border-zinc-600" />
           </SettingRow>
+          <SettingRow label="Platform Logo URL">
+            <input type="text" value={localSettings.platform_logo ?? ""}
+              onChange={e => updateAndSave("platform_logo", e.target.value)}
+              placeholder="/logos.svg"
+              className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-white outline-none focus:border-zinc-600" />
+          </SettingRow>
         </Section>
 
         <Section icon={Shield} title="Default Plan Limits (messages/month)">
@@ -96,7 +103,7 @@ function AdminSettings() {
             const key = `default_${plan}_credits`;
             return (
               <SettingRow key={plan} label={plan.charAt(0).toUpperCase() + plan.slice(1)}>
-                <input type="number" value={String(localSettings[key] ?? "")}
+                <input type="number" value={String((localSettings as Record<string, unknown>)[key] ?? "")}
                   onChange={e => updateAndSave(key, Number(e.target.value))}
                   className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-white outline-none focus:border-zinc-600" />
               </SettingRow>
@@ -111,7 +118,7 @@ function AdminSettings() {
             { key: "feature_allow_custom_domain", label: "Custom Domains" },
           ].map(f => (
             <SettingRow key={f.key} label={f.label}>
-              <Toggle enabled={!!localSettings[f.key]} onClick={() => toggleAndSave(f.key)} />
+              <Toggle enabled={!!(localSettings as Record<string, unknown>)[f.key]} onClick={() => toggleAndSave(f.key)} />
             </SettingRow>
           ))}
         </Section>
@@ -140,9 +147,10 @@ function AdminSettings() {
             { key: "smtp_port", label: "SMTP Port" },
             { key: "smtp_user", label: "SMTP Username" },
             { key: "smtp_pass", label: "SMTP Password", type: "password" },
+            { key: "smtp_from", label: "SMTP From Email", type: "text" },
           ].map(f => (
             <SettingRow key={f.key} label={f.label}>
-              <input type={f.type || "text"} value={(localSettings[f.key] ?? "") as string}
+              <input type={f.type || "text"} value={((localSettings as Record<string, unknown>)[f.key] ?? "") as string}
                 onChange={e => updateAndSave(f.key, e.target.value)}
                 className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-white outline-none focus:border-zinc-600" />
             </SettingRow>

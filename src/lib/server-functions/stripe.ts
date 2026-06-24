@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { getStripeClient, CREDIT_LIMITS, getPlanFromPriceId, getOrCreatePrice, PLAN_AMOUNTS } from "../stripe";
+import { getStripeClient, DEFAULT_CREDIT_LIMITS, getPlanFromPriceId, getOrCreatePrice, PLAN_AMOUNTS } from "../stripe";
+import { getCreditLimits, fireNotificationWebhook } from "./settings";
 import { getAdminClient } from "../supabase/admin";
 import { createClient } from "../supabase/server";
 import { AuthError, DatabaseError, ExternalServiceError, ValidationError, handleServerError, NotFoundError } from "../errors";
@@ -167,13 +168,14 @@ export const syncSubscription = createServerFn({ method: "POST" })
       );
 
       // If no active subscription, or it's cancelled at period end — downgrade immediately
+      const limits = await getCreditLimits();
       if (!activeSub || activeSub.cancel_at_period_end) {
         if (dbUser.plan !== "free") {
           const { error: downErr } = await admin
             .from("users")
             .update({
               plan: "free",
-              message_credits_limit: CREDIT_LIMITS.free,
+              message_credits_limit: limits.free,
               message_credits_used: 0,
               stripe_subscription_id: null,
             })
@@ -190,7 +192,7 @@ export const syncSubscription = createServerFn({ method: "POST" })
       const plan = getPlanFromPriceId(priceId);
       if (plan === "free") return { synced: false };
 
-      const credits = CREDIT_LIMITS[plan] ?? CREDIT_LIMITS.free;
+      const credits = limits[plan] ?? limits.free;
 
       const { error: updateErr } = await admin
         .from("users")
@@ -202,6 +204,9 @@ export const syncSubscription = createServerFn({ method: "POST" })
         .eq("id", user.id);
 
       if (updateErr) throw new DatabaseError(updateErr.message);
+
+      fireNotificationWebhook("subscription.synced", { userId: user.id, plan, credits });
+
       return { synced: true, plan };
     } catch (error) {
       throw handleServerError(error, "syncSubscription");
@@ -227,11 +232,12 @@ export const getPriceIds = createServerFn({ method: "GET" })
   });
 
 async function resetToFreePlan(admin: ReturnType<typeof getAdminClient>, customerId: string) {
+  const limits = await getCreditLimits();
   const { error } = await admin
     .from("users")
     .update({
       plan: "free",
-      message_credits_limit: CREDIT_LIMITS.free,
+      message_credits_limit: limits.free,
       message_credits_used: 0,
       stripe_subscription_id: null,
     })
@@ -272,7 +278,8 @@ export async function processStripeWebhook(
             `Unknown price ID: ${priceId}. Check STRIPE_PRICE_* env vars match your Stripe products.`,
           );
         }
-        const credits = CREDIT_LIMITS[plan] ?? CREDIT_LIMITS.free;
+        const limits = await getCreditLimits();
+        const credits = limits[plan] ?? limits.free;
 
         const { error: updateErr } = await admin
           .from("users")
@@ -288,6 +295,7 @@ export async function processStripeWebhook(
           console.error("[processStripeWebhook] subscription created failed:", updateErr.message);
           throw new DatabaseError(updateErr.message);
         }
+        fireNotificationWebhook("subscription.created", { customer: subscription.customer, plan, credits });
         break;
       }
 
@@ -322,7 +330,8 @@ export async function processStripeWebhook(
             `Unknown price ID: ${priceId}. Check STRIPE_PRICE_* env vars match your Stripe products.`,
           );
         }
-        const credits = CREDIT_LIMITS[plan] ?? CREDIT_LIMITS.free;
+        const limits = await getCreditLimits();
+        const credits = limits[plan] ?? limits.free;
 
         // Don't reset message_credits_used mid-cycle — only invoice.paid handles that
         const { error: updateErr } = await admin
@@ -338,12 +347,14 @@ export async function processStripeWebhook(
           console.error("[processStripeWebhook] subscription updated failed:", updateErr.message);
           throw new DatabaseError(updateErr.message);
         }
+        fireNotificationWebhook("subscription.updated", { customer: subscription.customer, plan, credits });
         break;
       }
 
       case "customer.subscription.deleted": {
         const deletedSub = event.data.object as { customer: string };
         await resetToFreePlan(admin, deletedSub.customer);
+        fireNotificationWebhook("subscription.deleted", { customer: deletedSub.customer });
         break;
       }
 

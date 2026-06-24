@@ -46,7 +46,7 @@ export const PRICE_IDS = {
   },
 } as const;
 
-export const CREDIT_LIMITS: Record<string, number> = {
+export const DEFAULT_CREDIT_LIMITS: Record<string, number> = {
   free: 50,
   hobby: 500,
   standard: 4000,

@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import {
   Outlet,
   Link,
@@ -12,12 +12,14 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import animationsCss from "../styles/animations.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
-import { AuthProvider } from "../lib/auth-context";
+import { AuthProvider, useAuth } from "../lib/auth-context";
 import { Toaster } from "@/components/ui/sonner";
 import { LenisProvider } from "@/components/motion/LenisProvider";
 import { PageTransition } from "@/components/motion/PageTransition";
 import { MouseGlow } from "@/components/motion/MouseGlow";
 import { FloatingShapes } from "@/components/motion/FloatingShapes";
+import { AnnouncementBanner } from "@/components/AnnouncementBanner";
+import { getPublicPlatformSettings } from "@/lib/server-functions/settings";
 
 function NotFoundComponent() {
   return (
@@ -137,16 +139,52 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <LenisProvider>
-        <AuthProvider>
-          <PageTransition>
-            <Outlet />
-          </PageTransition>
-          <Toaster />
-          <MouseGlow />
-          <FloatingShapes />
-        </AuthProvider>
-      </LenisProvider>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
     </QueryClientProvider>
+  );
+}
+
+function AppContent() {
+  const { is_admin, loading } = useAuth();
+
+  const { data } = useQuery({
+    queryKey: ["public-platform-settings"],
+    queryFn: getPublicPlatformSettings,
+    staleTime: 30_000,
+  });
+
+  if (loading || !data) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (data.maintenance_mode && !is_admin) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
+        <div className="max-w-md text-center">
+          <h1 className="text-4xl font-bold text-foreground">Under Maintenance</h1>
+          <p className="mt-4 text-muted-foreground">
+            We're currently performing scheduled maintenance. We'll be back shortly.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <LenisProvider>
+      <AnnouncementBanner />
+      <PageTransition>
+        <Outlet />
+      </PageTransition>
+      <Toaster />
+      <MouseGlow />
+      <FloatingShapes />
+    </LenisProvider>
   );
 }

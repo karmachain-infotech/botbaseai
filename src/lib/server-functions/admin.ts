@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { getAdminClient } from "../supabase/admin";
 import { createClient } from "../supabase/server";
-import { getStripeClient, CREDIT_LIMITS } from "../stripe";
+import { getStripeClient } from "../stripe";
 import { AuthError, DatabaseError, NotFoundError, ValidationError, handleServerError } from "../errors";
 
 async function requireAdmin() {

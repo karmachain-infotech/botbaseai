@@ -1,5 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Bot, BarChart3, MessageSquare, Plug, Settings, Sparkles, X, Monitor } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { getPublicPlatformSettings } from "@/lib/server-functions/settings";
 
 const navItems = [
   { label: "AI Agents", to: "/dashboard", icon: Bot },
@@ -18,6 +20,14 @@ interface SidebarProps {
 export function DashboardSidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
+  const { data: settings } = useQuery({
+    queryKey: ["public-platform-settings"],
+    queryFn: () => getPublicPlatformSettings(),
+    staleTime: 60_000,
+  });
+
+  const platformName = settings?.platform_name ?? "BotbaseAI";
+
   function handleNav() {
     onClose?.();
   }
@@ -26,8 +36,8 @@ export function DashboardSidebar({ isOpen, onClose }: SidebarProps) {
     <>
       <div className="flex h-16 items-center justify-between gap-2 border-b border-border px-6">
         <Link to="/" className="flex items-center gap-2" onClick={handleNav}>
-          <img src="/logos.svg" alt="BotbaseAI" className="h-8 w-8" />
-          <span className="text-lg font-bold tracking-tight">BotbaseAI</span>
+          <img src="/logos.svg" alt={platformName} className="h-8 w-8" />
+          <span className="text-lg font-bold tracking-tight">{platformName}</span>
         </Link>
         <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground md:hidden">
           <X className="h-5 w-5" />

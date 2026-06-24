@@ -124,7 +124,7 @@ function AgentSettings() {
     return (
       <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
         <Skeleton className="h-4 w-32" />
-        <div className="mt-4 flex items-center justify-between">
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
           <div>
             <Skeleton className="h-8 w-48" />
             <Skeleton className="mt-1 h-4 w-32" />
@@ -144,7 +144,7 @@ function AgentSettings() {
         <ArrowLeft className="h-4 w-4" /> Back to agents
       </Link>
 
-      <div className="mt-4 flex items-center justify-between">
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Agent settings</h1>
           <p className="text-sm text-muted-foreground">{agent.name}</p>
@@ -160,7 +160,7 @@ function AgentSettings() {
         <div className="mt-4 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
       )}
 
-      <div className="mt-6 flex gap-1 rounded-xl border border-border bg-card p-1">
+      <div className="mt-6 flex flex-wrap gap-1 rounded-xl border border-border bg-card p-1">
         {tabs.map((tab) => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)}
             className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
@@ -232,7 +232,7 @@ function AgentSettings() {
           <div className="space-y-6">
             <div>
               <label className="mb-1.5 block text-sm font-medium">Primary color (header, bubble)</label>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <input type="color" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)}
                   className="h-10 w-10 rounded-lg border border-border cursor-pointer" />
                 <span className="text-sm text-muted-foreground">{primaryColor}</span>
@@ -240,7 +240,7 @@ function AgentSettings() {
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium">Background color (chat window)</label>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <input type="color" value={backgroundColor} onChange={(e) => setBackgroundColor(e.target.value)}
                   className="h-10 w-10 rounded-lg border border-border cursor-pointer" />
                 <span className="text-sm text-muted-foreground">{backgroundColor}</span>
@@ -248,7 +248,7 @@ function AgentSettings() {
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium">Text color</label>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <input type="color" value={textColor} onChange={(e) => setTextColor(e.target.value)}
                   className="h-10 w-10 rounded-lg border border-border cursor-pointer" />
                 <span className="text-sm text-muted-foreground">{textColor}</span>
@@ -272,7 +272,7 @@ function AgentSettings() {
               </p>
             </div>
             <div className="rounded-xl border border-border bg-background p-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-xs font-medium text-muted-foreground">Widget script</p>
                 <button onClick={() => { navigator.clipboard.writeText(`<script src="https://botbaseai.com/widget.js" data-bot-id="${id}"></script>`); }}
                   className="text-xs font-medium text-primary hover:underline">Copy</button>
