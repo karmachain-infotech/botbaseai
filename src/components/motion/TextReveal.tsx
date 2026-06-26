@@ -18,7 +18,7 @@ export function TextReveal({ children, as: Tag = "h2", className }: TextRevealPr
   return (
     <Tag className={className}>
       {words.map((word, i) => (
-        <span key={i} className="inline-block overflow-hidden">
+        <span key={i} className="inline-block overflow-hidden mr-[0.25em] last:mr-0">
           <motion.span
             className="inline-block"
             initial={{ y: "100%" }}
@@ -30,7 +30,7 @@ export function TextReveal({ children, as: Tag = "h2", className }: TextRevealPr
               ease: [0.25, 0.1, 0.25, 1],
             }}
           >
-            {word}{" "}
+            {word}
           </motion.span>
         </span>
       ))}
