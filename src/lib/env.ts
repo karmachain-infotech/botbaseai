@@ -28,6 +28,12 @@ export function validateEnv() {
   }
 
   if (missing.length > 0) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error(
+        `Missing environment variables: ${missing.join(", ")}. ` +
+          "These are required for the application to function.",
+      );
+    }
     console.warn(
       `Missing environment variables: ${missing.join(", ")}. ` +
         "Some features may not work correctly.",

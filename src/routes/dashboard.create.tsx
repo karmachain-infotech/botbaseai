@@ -84,7 +84,9 @@ function CreateAgentWizard() {
         const status = await getTrainingStatus({ data: { chatbotId: agentId } });
         if (status.allTrained || status.hasFailed) {
           setTraining(false);
-          setCreatedId(agentId);
+          if (status.allTrained) {
+            setCreatedId(agentId);
+          }
           if (status.hasFailed) setTrainingError(true);
         }
       } catch {
@@ -117,6 +119,27 @@ function CreateAgentWizard() {
   async function handleCreate() {
     setCreating(true);
     setError("");
+
+    if (sources.includes("website") && websiteUrl) {
+      try {
+        new URL(websiteUrl);
+      } catch {
+        setError("Invalid website URL. Please enter a valid URL starting with https://");
+        setCreating(false);
+        return;
+      }
+    }
+
+    if (sources.includes("files")) {
+      for (const file of selectedFiles) {
+        if (file.size > 10 * 1024 * 1024) {
+          setError(`File "${file.name}" exceeds the 10MB size limit.`);
+          setCreating(false);
+          return;
+        }
+      }
+    }
+
     try {
       const agent = await createChatbot({
         data: {
@@ -138,22 +161,45 @@ function CreateAgentWizard() {
 
       const agentId = (agent as { id: string }).id;
 
+      const expectedCount =
+        (textContent && sources.includes("text") ? 1 : 0) +
+        (websiteUrl && sources.includes("website") ? 1 : 0) +
+        (qaContent && sources.includes("qa") ? 1 : 0) +
+        (sources.includes("files") ? selectedFiles.length : 0);
+
+      let addedCount = 0;
+
       if (textContent && sources.includes("text")) {
-        await addSource({
-          data: { chatbotId: agentId, type: "text", name: "Manual text", content: textContent },
-        }).catch(console.error);
+        try {
+          await addSource({
+            data: { chatbotId: agentId, type: "text", name: "Manual text", content: textContent },
+          });
+          addedCount++;
+        } catch (err) {
+          console.error("Failed to add text source:", err);
+        }
       }
 
       if (websiteUrl && sources.includes("website")) {
-        await addSource({
-          data: { chatbotId: agentId, type: "url", name: websiteUrl, content: websiteUrl },
-        }).catch(console.error);
+        try {
+          await addSource({
+            data: { chatbotId: agentId, type: "url", name: websiteUrl, content: websiteUrl },
+          });
+          addedCount++;
+        } catch (err) {
+          console.error("Failed to add website source:", err);
+        }
       }
 
       if (qaContent && sources.includes("qa")) {
-        await addSource({
-          data: { chatbotId: agentId, type: "qa", name: "Q&A Pairs", content: qaContent },
-        }).catch(console.error);
+        try {
+          await addSource({
+            data: { chatbotId: agentId, type: "qa", name: "Q&A Pairs", content: qaContent },
+          });
+          addedCount++;
+        } catch (err) {
+          console.error("Failed to add Q&A source:", err);
+        }
       }
 
       if (selectedFiles.length > 0 && sources.includes("files")) {
@@ -167,18 +213,25 @@ function CreateAgentWizard() {
                 name: file.name,
                 fileBase64: base64.split(",")[1],
               },
-            }).catch(console.error);
+            });
+            addedCount++;
           } catch (err) {
             console.error("Failed to upload file:", file.name, err);
           }
         }
       }
 
-      if (sources.length > 0) {
+      if (addedCount > 0) {
         setAgentId(agentId);
         setTraining(true);
+        if (addedCount < expectedCount) {
+          setTrainingError(true);
+        }
       } else {
         setCreatedId(agentId);
+        if (sources.length > 0) {
+          setError("Agent created but no data sources could be added. You can add sources later from the agent settings.");
+        }
       }
     } catch (err) {
       console.error("Failed to create agent:", err);
@@ -264,36 +317,21 @@ function CreateAgentWizard() {
                 className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none transition-colors focus:border-primary"
               />
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label className="mb-1.5 block text-sm font-medium">Model</label>
-                <select
-                  value={model}
-                  onChange={(e) => setModel(e.target.value)}
-                  className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none transition-colors focus:border-primary"
-                >
-                <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
-                <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
-                <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
-                <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
-                </select>
-              </div>
-              <div>
-                <label className="mb-1.5 block text-sm font-medium">Language</label>
-                <select
-                  value={language}
-                  onChange={(e) => setLanguage(e.target.value)}
-                  className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none transition-colors focus:border-primary"
-                >
-                  <option value="en">English</option>
-                  <option value="hi">Hindi (हिन्दी)</option>
-                  <option value="es">Spanish</option>
-                  <option value="fr">French</option>
-                  <option value="de">German</option>
-                  <option value="ja">Japanese</option>
-                  <option value="zh">Chinese</option>
-                </select>
-              </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium">Language</label>
+              <select
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+                className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none transition-colors focus:border-primary"
+              >
+                <option value="en">English</option>
+                <option value="hi">Hindi (हिन्दी)</option>
+                <option value="es">Spanish</option>
+                <option value="fr">French</option>
+                <option value="de">German</option>
+                <option value="ja">Japanese</option>
+                <option value="zh">Chinese</option>
+              </select>
             </div>
           </div>
         )}
@@ -441,9 +479,9 @@ function CreateAgentWizard() {
               </div>
             )}
 
-            {trainingError && !training && (
+            {trainingError && !training && !createdId && (
               <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
-                Some sources failed to train. Your agent may not have complete knowledge.
+                Failed to train data sources. Please check your website URL and create the agent again.
               </div>
             )}
 

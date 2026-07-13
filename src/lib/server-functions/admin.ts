@@ -932,38 +932,4 @@ export const checkIsAdmin = createServerFn({ method: "GET" })
     }
   });
 
-export const adminImpersonateUser = createServerFn({ method: "POST" })
-  .inputValidator(z.object({ userId: z.string().uuid() }))
-  .handler(async ({ data }) => {
-    try {
-      const { admin, adminId } = await requireAdmin();
 
-      const { data: targetUser } = await admin
-        .from("users")
-        .select("email")
-        .eq("id", data.userId)
-        .single();
-
-      if (!targetUser) throw new NotFoundError("User");
-
-      // Create an admin token for impersonation using the admin API
-      const { data: tokenData, error: tokenError } = await admin.auth.admin.generateLink({
-        type: "recovery",
-        email: targetUser.email,
-      });
-
-      if (tokenError) throw new DatabaseError(tokenError.message);
-
-      await logAdminAction({
-        adminId,
-        action: "user_impersonated",
-        targetUserId: data.userId,
-        metadata: { method: "generate_link" },
-      });
-
-      // Return the redirect URL that will auto-login as that user
-      return { url: `/login?impersonate=${data.userId}` };
-    } catch (error) {
-      throw handleServerError(error, "adminImpersonateUser");
-    }
-  });

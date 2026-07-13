@@ -120,7 +120,7 @@ export async function streamChat(
       .select("role, content")
       .eq("conversation_id", conversationId)
       .order("created_at", { ascending: true })
-      .limit(3)
+      .limit(8)
       .then(({ data, error }) => {
         if (error) throw new DatabaseError(error.message);
         return (data ?? []) as unknown as { role: string; content: string }[];
@@ -128,7 +128,7 @@ export async function streamChat(
     searchSimilarChunks(req.chatbotId, req.message),
   ]);
 
-  let context = chunks.map((c) => c.content).join("\n\n").slice(0, 800);
+  let context = chunks.map((c) => c.content).join("\n\n").slice(0, 2500);
 
   if (!context) {
     const { data: fallbackChunks, error: fallbackErr } = await supabase
@@ -138,21 +138,26 @@ export async function streamChat(
       .limit(5);
     if (!fallbackErr && fallbackChunks && fallbackChunks.length > 0) {
       context = (fallbackChunks as unknown as { content: string }[])
-        .map((c) => c.content).join("\n\n").slice(0, 800);
+        .map((c) => c.content).join("\n\n").slice(0, 2500);
     }
   }
 
   const botName = bot.name || "Support Agent";
   const instructions = (bot.instructions || "").slice(0, 1000);
 
-  const systemInstruction = `You are a helpful assistant. Answer the user's questions based on the CONTEXT provided below.
+  const systemInstruction = `You are ${botName}, a warm, knowledgeable assistant for ${bot.name}. Your personality is friendly, confident, and human-like — never robotic.
 
 ${instructions ? `=== GUIDELINES ===\n${instructions}\n\n` : ""}=== CONTEXT ===
 ${context || "No relevant context found."}
 
-If the user asks about your name or identity, look for the answer in the CONTEXT above.
-
-Keep responses short, warm, and helpful. Use emojis naturally.`;
+=== RULES ===
+- Answer naturally like a human expert, not an AI. Never say "according to the context" or "based on the provided information."
+- Use the CONTEXT to answer accurately. If the context doesn't contain the answer, say "I don't have information about that" — do not make things up.
+- Keep responses concise and warm. Use emojis naturally where they fit.
+- If the user asks about your name or identity, use the CONTEXT or introduce yourself as ${botName}.
+- Refer to the user as "you" and yourself as "I" — be conversational.
+- Don't list or number your answers unless the user asks for a list.
+- If you're unsure, ask clarifying questions instead of guessing.`;
 
   const msgs = (history ?? []).map((m) => ({
     role: m.role as "user" | "assistant",

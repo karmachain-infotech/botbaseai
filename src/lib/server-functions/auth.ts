@@ -69,26 +69,6 @@ export const refreshSession = createServerFn({ method: "GET" })
     }
   });
 
-export const checkIsAdmin = createServerFn({ method: "GET" })
-  .handler(async () => {
-    try {
-      const supabase = await createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return { is_admin: false };
-
-      const admin = getAdminClient();
-      const { data } = await admin
-        .from("users")
-        .select("is_admin")
-        .eq("id", user.id)
-        .single();
-
-      return { is_admin: (data as { is_admin: boolean } | null)?.is_admin ?? false };
-    } catch {
-      return { is_admin: false };
-    }
-  });
-
 export const ensureUserExists = createServerFn({ method: "POST" })
   .handler(async () => {
     try {
@@ -99,29 +79,19 @@ export const ensureUserExists = createServerFn({ method: "POST" })
       }
 
       const admin = getAdminClient();
-      const { data: existing } = await admin
-        .from("users")
-        .select("id")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      if (existing) {
-        return { created: false };
-      }
-
       const [limits] = await Promise.all([getCreditLimits()]);
-      const { error: insertError } = await admin.from("users").insert({
+      const { error: upsertError } = await admin.from("users").upsert({
         id: user.id,
         email: user.email,
         name: user.user_metadata?.name ?? user.user_metadata?.full_name ?? user.email?.split("@")[0] ?? "User",
         avatar_url: user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null,
         plan: "free",
         message_credits_limit: limits.free,
-      });
+      }, { onConflict: "id", ignoreDuplicates: true });
 
-      if (insertError) {
-        console.error("[ensureUserExists] Insert error:", insertError.message);
-        return { created: false, error: insertError.message };
+      if (upsertError) {
+        console.error("[ensureUserExists] Upsert error:", upsertError.message);
+        return { created: false, error: upsertError.message };
       }
 
       fireNotificationWebhook("user.signup", { userId: user.id, email: user.email, name: user.user_metadata?.name });

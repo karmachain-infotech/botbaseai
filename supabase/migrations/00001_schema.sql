@@ -50,7 +50,7 @@ create table if not exists embeddings (
   chatbot_id uuid not null references chatbots(id) on delete cascade,
   source_id uuid not null references sources(id) on delete cascade,
   content text not null,
-  embedding vector(1536) not null,
+  embedding vector(384) not null,
   metadata jsonb not null default '{}'::jsonb,
   created_at timestamp not null default now()
 );
@@ -160,7 +160,7 @@ create policy "Public can read widget config" on chatbots
 -- ============================================
 
 create or replace function match_embeddings(
-  query_embedding vector(1536),
+  query_embedding vector(384),
   match_chatbot_id uuid,
   match_threshold float default 0.7,
   match_count int default 5

@@ -1,7 +1,8 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 import { createClient, isSupabaseConfigured } from "./supabase/client";
 import type { User } from "@supabase/supabase-js";
-import { refreshSession, checkIsAdmin } from "./server-functions/auth";
+import { refreshSession } from "./server-functions/auth";
+import { checkIsAdmin } from "./server-functions/admin";
 
 interface AuthContextValue {
   user: User | null;
@@ -41,7 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (!cancelled) setUser(data.session.user);
           try {
             const result = await checkIsAdmin();
-            if (!cancelled) setIsAdmin(result.is_admin);
+            if (!cancelled) setIsAdmin(result.isAdmin);
           } catch {}
           if (!cancelled) setLoading(false);
           return;
@@ -56,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (retry.session?.user) {
               try {
                 const adminResult = await checkIsAdmin();
-                if (!cancelled) setIsAdmin(adminResult.is_admin);
+                if (!cancelled) setIsAdmin(adminResult.isAdmin);
               } catch {}
             }
           }

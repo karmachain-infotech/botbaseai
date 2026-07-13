@@ -123,6 +123,7 @@ const security = [
 
 function Landing() {
   const [activeTab, setActiveTab] = useState(exploreTabs[0]);
+  const [showVideo, setShowVideo] = useState(false);
 
   return (
     <div className="min-h-screen bg-background">
@@ -183,14 +184,30 @@ function Landing() {
 
           {/* Video placeholder */}
           <ParallaxCard intensity={4} className="mt-16 aspect-video w-full overflow-hidden rounded-2xl border border-border bg-card shadow-card glow-primary" style={{ transformStyle: "preserve-3d" }}>
-            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-secondary to-card">
-              <button className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-brand text-primary-foreground transition-transform hover:scale-105">
+            <div className="relative flex h-full w-full items-center justify-center overflow-hidden">
+              <img src="/explore-playground.png" alt="BotbaseAI demo" className="absolute inset-0 h-full w-full object-cover" />
+              <div className="absolute inset-0 bg-black/40" />
+              <button onClick={() => setShowVideo(true)} className="relative z-10 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-brand text-primary-foreground transition-transform hover:scale-105">
                 <Play className="h-6 w-6 translate-x-0.5" />
               </button>
             </div>
           </ParallaxCard>
         </div>
       </section>
+
+      {/* Video modal */}
+      {showVideo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4" onClick={() => setShowVideo(false)}>
+          <div className="relative aspect-video w-full max-w-5xl" onClick={(e) => e.stopPropagation()}>
+            <iframe
+              src="https://www.youtube.com/embed/3SWYin4SYtE?autoplay=1"
+              className="h-full w-full rounded-2xl shadow-2xl"
+              allow="autoplay; encrypted-media"
+              allowFullScreen
+            />
+          </div>
+        </div>
+      )}
 
       {/* Social proof */}
       <motion.section
@@ -245,15 +262,13 @@ function Landing() {
             ))}
           </StaggerContainer>
           <motion.div
-            className="aspect-square overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-secondary to-card shadow-card lg:aspect-auto"
+            className="aspect-square overflow-hidden rounded-2xl border border-border bg-card shadow-card lg:aspect-auto"
             initial={{ opacity: 0, x: 20 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6, ease: [0.25, 0.1, 0.25, 1] }}
           >
-            <div className="flex h-full w-full items-center justify-center">
-              <Play className="h-12 w-12 text-primary" />
-            </div>
+            <img src="/how-it-works.png" alt="How BotbaseAI works" className="h-full w-full object-cover" />
           </motion.div>
         </div>
       </Section>
@@ -303,10 +318,8 @@ function Landing() {
             </button>
           ))}
         </div>
-        <div className="aspect-video overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-secondary to-card shadow-card">
-          <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-            <span className="text-sm font-medium">{activeTab} preview</span>
-          </div>
+        <div className="aspect-video overflow-hidden rounded-2xl border border-border bg-card shadow-card">
+          <img src={`/explore-${activeTab.toLowerCase()}.png`} alt={`${activeTab} preview`} className="h-full w-full object-cover" />
         </div>
       </Section>
 

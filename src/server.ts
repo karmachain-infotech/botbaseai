@@ -2,6 +2,7 @@ import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
+import { createServerClient } from "@supabase/ssr";
 import { getAdminClient } from "./lib/supabase/admin";
 import { streamChat } from "./lib/rag/chat";
 import { checkRateLimit } from "./lib/rate-limit";
@@ -46,6 +47,29 @@ const corsHeaders = {
   "access-control-allow-methods": "GET, POST, OPTIONS",
   "access-control-allow-headers": "content-type",
 };
+
+function parseCookies(cookie: string): { name: string; value: string }[] {
+  if (!cookie) return [];
+  return cookie.split(";").filter(c => c.trim()).map((c) => {
+    const parts = c.trim().split("=");
+    return { name: parts[0], value: parts.slice(1).join("=") };
+  });
+}
+
+async function getUserFromRequest(request: Request) {
+  const cookie = request.headers.get("cookie") ?? "";
+  const supabaseUrl = process.env.VITE_SUPABASE_URL || "";
+  const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || "";
+  if (!supabaseUrl || !supabaseKey) return null;
+  const supabase = createServerClient(supabaseUrl, supabaseKey, {
+    cookies: {
+      getAll() { return parseCookies(cookie); },
+      setAll() {},
+    },
+  });
+  const { data: { user } } = await supabase.auth.getUser();
+  return user;
+}
 
 function jsonResponse(data: unknown, status = 200): Response {
   return Response.json(data, {
@@ -181,6 +205,26 @@ async function handleWidgetChat(botId: string, request: Request): Promise<Respon
 }
 
 async function handlePlaygroundChat(botId: string, request: Request): Promise<Response> {
+  const user = await getUserFromRequest(request);
+  if (!user) {
+    return jsonResponse({ error: "Unauthorized" }, 401);
+  }
+
+  const admin = getAdminClient();
+  const { data: chatbot, error: chatError } = await admin
+    .from("chatbots")
+    .select("user_id")
+    .eq("id", botId)
+    .single();
+
+  if (chatError || !chatbot) {
+    return jsonResponse({ error: "Chatbot not found" }, 404);
+  }
+
+  if (chatbot.user_id !== user.id) {
+    return jsonResponse({ error: "Forbidden" }, 403);
+  }
+
   let body: { message?: string; sessionId?: string; conversationId?: string };
   try {
     body = (await request.json()) as typeof body;

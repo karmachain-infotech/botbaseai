@@ -47,7 +47,7 @@ export function createClient() {
 
 function parseCookieString(cookie: string): { name: string; value: string }[] {
   if (!cookie) return [];
-  return cookie.split(";").map((c) => {
+  return cookie.split(";").filter(c => c.trim()).map((c) => {
     const parts = c.trim().split("=");
     return { name: parts[0], value: parts.slice(1).join("=") };
   });

@@ -26,12 +26,12 @@ function formatMarkdown(text: string): string {
     const numberedMatch = line.match(/^(\s*)\d+[.)]\s+(.+)/);
 
     if (bulletMatch) {
-      if (!inList) { result.push('<ul style="margin:2px 0;padding-left:20px">'); inList = true; listType = "ul"; }
-      result.push(`<li style="margin:2px 0">${bulletMatch[2]}</li>`);
+      if (!inList) { result.push("<ul>"); inList = true; listType = "ul"; }
+      result.push(`<li>${bulletMatch[2]}</li>`);
       blankCount = 0;
     } else if (numberedMatch) {
-      if (!inList) { result.push('<ol style="margin:2px 0;padding-left:20px">'); inList = true; listType = "ol"; }
-      result.push(`<li style="margin:2px 0">${numberedMatch[2]}</li>`);
+      if (!inList) { result.push("<ol>"); inList = true; listType = "ol"; }
+      result.push(`<li>${numberedMatch[2]}</li>`);
       blankCount = 0;
     } else {
       if (inList) { result.push(listType === "ul" ? "</ul>" : "</ol>"); inList = false; }
@@ -39,7 +39,7 @@ function formatMarkdown(text: string): string {
         blankCount++;
       } else {
         if (blankCount > 0 && result.length > 0) {
-          result.push('<span style="display:block;height:6px"></span>');
+          result.push("<br>");
         }
         blankCount = 0;
         result.push(`<span>${line}</span>`);
