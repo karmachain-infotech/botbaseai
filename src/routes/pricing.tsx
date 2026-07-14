@@ -6,6 +6,7 @@ import { Navbar } from "@/components/marketing/Navbar";
 import { Footer } from "@/components/marketing/Footer";
 import { useAuth } from "@/lib/auth-context";
 import { createCheckoutSession, getPriceIds } from "@/lib/server-functions/stripe";
+import { track } from "@/lib/analytics";
 import { AnimatedSection } from "@/components/motion/AnimatedSection";
 import { StaggerContainer, staggerItem } from "@/components/motion/StaggerContainer";
 import { ParallaxCard } from "@/components/motion/ParallaxCard";
@@ -205,6 +206,7 @@ function Pricing() {
     }
 
     setLoading(plan.name);
+    track("checkout_initiated", { plan: plan.name, interval: yearly ? "yearly" : "monthly" });
 
     try {
       const priceId = yearly ? pid.yearly : pid.monthly;

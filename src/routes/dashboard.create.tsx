@@ -15,6 +15,7 @@ import {
 import { createChatbot } from "@/lib/server-functions/chatbots";
 import { addSource, getTrainingStatus } from "@/lib/server-functions/sources";
 import { SiriLoader } from "@/components/ui/siri-loader";
+import { track } from "@/lib/analytics";
 
 export const Route = createFileRoute("/dashboard/create")({
   head: () => ({
@@ -160,6 +161,7 @@ function CreateAgentWizard() {
       });
 
       const agentId = (agent as { id: string }).id;
+      track("agent_created", { model, language, sources });
 
       const expectedCount =
         (textContent && sources.includes("text") ? 1 : 0) +
