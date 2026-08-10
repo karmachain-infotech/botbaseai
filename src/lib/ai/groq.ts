@@ -48,7 +48,9 @@ export class GroqProvider implements AIProviderInterface {
 
     if (!response.ok) {
       const text = await response.text().catch(() => "");
-      throw new Error(`Groq API error: ${response.status} ${response.statusText}${text ? ` - ${text}` : ""}`);
+      throw new Error(
+        `Groq API error: ${response.status} ${response.statusText}${text ? ` - ${text}` : ""}`,
+      );
     }
 
     const reader = response.body?.getReader();

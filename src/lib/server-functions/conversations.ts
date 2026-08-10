@@ -2,7 +2,12 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { getAdminClient } from "../supabase/admin";
 import { createClient } from "../supabase/server";
-import { AuthError, DatabaseError, NotFoundError, handleServerError } from "../errors";
+import {
+  AuthError,
+  DatabaseError,
+  NotFoundError,
+  handleServerError,
+} from "../errors";
 
 export const listConversations = createServerFn({ method: "GET" })
   .inputValidator(
@@ -16,13 +21,18 @@ export const listConversations = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     try {
       const supabase = await createClient();
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
       if (authError || !user) throw new AuthError();
 
       const admin = getAdminClient();
       let query = admin
         .from("conversations")
-        .select("id, session_id, user_identifier, status, escalated, rating, created_at, updated_at, messages(count)")
+        .select(
+          "id, session_id, user_identifier, status, escalated, rating, created_at, updated_at, messages(count)",
+        )
         .eq("chatbot_id", data.chatbotId)
         .order("created_at", { ascending: false })
         .range(data.offset, data.offset + data.limit - 1);
@@ -44,7 +54,10 @@ export const getConversation = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     try {
       const supabase = await createClient();
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
       if (authError || !user) throw new AuthError();
 
       const admin = getAdminClient();
@@ -82,7 +95,10 @@ export const updateConversationStatus = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     try {
       const supabase = await createClient();
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
       if (authError || !user) throw new AuthError();
 
       const admin = getAdminClient();

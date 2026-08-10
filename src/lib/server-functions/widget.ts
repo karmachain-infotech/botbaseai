@@ -3,7 +3,12 @@ import { z } from "zod";
 import { getAdminClient } from "../supabase/admin";
 import { streamChat } from "../rag/chat";
 import { checkRateLimit } from "../rate-limit";
-import { DatabaseError, NotFoundError, RateLimitError, handleServerError } from "../errors";
+import {
+  DatabaseError,
+  NotFoundError,
+  RateLimitError,
+  handleServerError,
+} from "../errors";
 
 export const getWidgetConfig = createServerFn({ method: "GET" })
   .inputValidator(z.object({ botId: z.string().uuid() }))

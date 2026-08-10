@@ -13,6 +13,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { createChatbot } from "@/lib/server-functions/chatbots";
+import { getAppUrl } from "@/lib/server-functions/config";
 import { addSource, getTrainingStatus } from "@/lib/server-functions/sources";
 import { SiriLoader } from "@/components/ui/siri-loader";
 import { track } from "@/lib/analytics";
@@ -40,10 +41,30 @@ const sourceOptions: {
   description: string;
   icon: typeof FileText;
 }[] = [
-  { id: "files", label: "Files", description: "Upload PDFs, DOCX, or TXT documents.", icon: FileText },
-  { id: "website", label: "Website", description: "Crawl a URL or sitemap to import pages.", icon: Globe },
-  { id: "text", label: "Text", description: "Paste raw text content to train on.", icon: TypeIcon },
-  { id: "qa", label: "Q&A", description: "Add question and answer pairs.", icon: HelpCircle },
+  {
+    id: "files",
+    label: "Files",
+    description: "Upload PDFs, DOCX, or TXT documents.",
+    icon: FileText,
+  },
+  {
+    id: "website",
+    label: "Website",
+    description: "Crawl a URL or sitemap to import pages.",
+    icon: Globe,
+  },
+  {
+    id: "text",
+    label: "Text",
+    description: "Paste raw text content to train on.",
+    icon: TypeIcon,
+  },
+  {
+    id: "qa",
+    label: "Q&A",
+    description: "Add question and answer pairs.",
+    icon: HelpCircle,
+  },
 ];
 
 function CreateAgentWizard() {
@@ -77,12 +98,21 @@ function CreateAgentWizard() {
   const [agentId, setAgentId] = useState<string | null>(null);
   const [createdId, setCreatedId] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [embedBase, setEmbedBase] = useState("https://botbaseai.com");
+
+  useEffect(() => {
+    getAppUrl()
+      .then((url) => setEmbedBase(url))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!training || !agentId) return;
     const interval = setInterval(async () => {
       try {
-        const status = await getTrainingStatus({ data: { chatbotId: agentId } });
+        const status = await getTrainingStatus({
+          data: { chatbotId: agentId },
+        });
         if (status.allTrained || status.hasFailed) {
           setTraining(false);
           if (status.allTrained) {
@@ -98,13 +128,15 @@ function CreateAgentWizard() {
   }, [training, agentId]);
 
   const canContinue =
-    step === 0 ? name.trim().length > 0
-    : step === 1 ? sources.length > 0
-    : true;
+    step === 0
+      ? name.trim().length > 0
+      : step === 1
+        ? sources.length > 0
+        : true;
 
   function toggleSource(id: SourceType) {
     setSources((prev) =>
-      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id],
     );
   }
 
@@ -125,7 +157,9 @@ function CreateAgentWizard() {
       try {
         new URL(websiteUrl);
       } catch {
-        setError("Invalid website URL. Please enter a valid URL starting with https://");
+        setError(
+          "Invalid website URL. Please enter a valid URL starting with https://",
+        );
         setCreating(false);
         return;
       }
@@ -174,7 +208,12 @@ function CreateAgentWizard() {
       if (textContent && sources.includes("text")) {
         try {
           await addSource({
-            data: { chatbotId: agentId, type: "text", name: "Manual text", content: textContent },
+            data: {
+              chatbotId: agentId,
+              type: "text",
+              name: "Manual text",
+              content: textContent,
+            },
           });
           addedCount++;
         } catch (err) {
@@ -185,7 +224,12 @@ function CreateAgentWizard() {
       if (websiteUrl && sources.includes("website")) {
         try {
           await addSource({
-            data: { chatbotId: agentId, type: "url", name: websiteUrl, content: websiteUrl },
+            data: {
+              chatbotId: agentId,
+              type: "url",
+              name: websiteUrl,
+              content: websiteUrl,
+            },
           });
           addedCount++;
         } catch (err) {
@@ -196,7 +240,12 @@ function CreateAgentWizard() {
       if (qaContent && sources.includes("qa")) {
         try {
           await addSource({
-            data: { chatbotId: agentId, type: "qa", name: "Q&A Pairs", content: qaContent },
+            data: {
+              chatbotId: agentId,
+              type: "qa",
+              name: "Q&A Pairs",
+              content: qaContent,
+            },
           });
           addedCount++;
         } catch (err) {
@@ -232,7 +281,9 @@ function CreateAgentWizard() {
       } else {
         setCreatedId(agentId);
         if (sources.length > 0) {
-          setError("Agent created but no data sources could be added. You can add sources later from the agent settings.");
+          setError(
+            "Agent created but no data sources could be added. You can add sources later from the agent settings.",
+          );
         }
       }
     } catch (err) {
@@ -258,7 +309,9 @@ function CreateAgentWizard() {
           <Bot className="h-6 w-6 text-primary-foreground" />
         </span>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Create new agent</h1>
+          <h1 className="text-2xl font-bold tracking-tight">
+            Create new agent
+          </h1>
           <p className="text-sm text-muted-foreground">
             Train a new AI agent on your business data in a few steps.
           </p>
@@ -283,10 +336,14 @@ function CreateAgentWizard() {
               >
                 {done ? <Check className="h-4 w-4" /> : i + 1}
               </span>
-              <span className={`hidden text-sm font-medium sm:inline ${active ? "text-foreground" : "text-muted-foreground"}`}>
+              <span
+                className={`hidden text-sm font-medium sm:inline ${active ? "text-foreground" : "text-muted-foreground"}`}
+              >
                 {label}
               </span>
-              {i < steps.length - 1 && <span className="mx-1 h-px flex-1 bg-border" />}
+              {i < steps.length - 1 && (
+                <span className="mx-1 h-px flex-1 bg-border" />
+              )}
             </li>
           );
         })}
@@ -298,7 +355,9 @@ function CreateAgentWizard() {
         {step === 0 && (
           <div className="space-y-5">
             <div>
-              <label className="mb-1.5 block text-sm font-medium">Agent name</label>
+              <label className="mb-1.5 block text-sm font-medium">
+                Agent name
+              </label>
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -320,7 +379,9 @@ function CreateAgentWizard() {
               />
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-medium">Language</label>
+              <label className="mb-1.5 block text-sm font-medium">
+                Language
+              </label>
               <select
                 value={language}
                 onChange={(e) => setLanguage(e.target.value)}
@@ -362,8 +423,12 @@ function CreateAgentWizard() {
                       <opt.icon className="h-4 w-4 text-primary" />
                     </span>
                     <span>
-                      <span className="block text-sm font-semibold">{opt.label}</span>
-                      <span className="block text-xs text-muted-foreground">{opt.description}</span>
+                      <span className="block text-sm font-semibold">
+                        {opt.label}
+                      </span>
+                      <span className="block text-xs text-muted-foreground">
+                        {opt.description}
+                      </span>
                     </span>
                   </button>
                 );
@@ -372,18 +437,36 @@ function CreateAgentWizard() {
 
             {sources.includes("files") && (
               <div className="space-y-3">
-                <div onClick={() => fileInputRef.current?.click()}
-                  className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-background p-6 text-center transition-colors hover:border-primary/50">
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-background p-6 text-center transition-colors hover:border-primary/50"
+                >
                   <Upload className="h-6 w-6 text-muted-foreground" />
-                  <p className="text-sm font-medium">{selectedFiles.length > 0 ? `${selectedFiles.length} file(s) selected` : "Click to select files"}</p>
-                  <p className="text-xs text-muted-foreground">PDF, DOCX, TXT up to 10MB each</p>
+                  <p className="text-sm font-medium">
+                    {selectedFiles.length > 0
+                      ? `${selectedFiles.length} file(s) selected`
+                      : "Click to select files"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    PDF, DOCX, TXT up to 10MB each
+                  </p>
                 </div>
-                <input ref={fileInputRef} type="file" accept=".pdf,.docx,.txt" multiple className="hidden"
-                  onChange={(e) => setSelectedFiles(Array.from(e.target.files ?? []))} />
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,.docx,.txt"
+                  multiple
+                  className="hidden"
+                  onChange={(e) =>
+                    setSelectedFiles(Array.from(e.target.files ?? []))
+                  }
+                />
                 {selectedFiles.length > 0 && (
                   <div className="space-y-1">
                     {selectedFiles.map((f, i) => (
-                      <p key={i} className="text-xs text-muted-foreground">{f.name} ({(f.size / 1024).toFixed(1)} KB)</p>
+                      <p key={i} className="text-xs text-muted-foreground">
+                        {f.name} ({(f.size / 1024).toFixed(1)} KB)
+                      </p>
                     ))}
                   </div>
                 )}
@@ -423,7 +506,8 @@ function CreateAgentWizard() {
           <div className="space-y-5">
             <div>
               <label className="mb-1.5 block text-sm font-medium">
-                System prompt <span className="text-muted-foreground">(advanced)</span>
+                System prompt{" "}
+                <span className="text-muted-foreground">(advanced)</span>
               </label>
               <textarea
                 value={systemPrompt}
@@ -439,13 +523,15 @@ function CreateAgentWizard() {
             <div className="rounded-xl border border-border bg-background p-4">
               <p className="text-sm font-medium">AI Actions</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                You'll be able to configure AI Actions from the agent settings page after creation.
+                You'll be able to configure AI Actions from the agent settings
+                page after creation.
               </p>
             </div>
             <div className="rounded-xl border border-border bg-background p-4">
               <p className="text-sm font-medium">Escalation rules</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Configure when to hand off to a human agent from settings after creation.
+                Configure when to hand off to a human agent from settings after
+                creation.
               </p>
             </div>
           </div>
@@ -455,7 +541,9 @@ function CreateAgentWizard() {
         {step === 3 && (
           <div className="space-y-5">
             <div>
-              <label className="mb-1.5 block text-sm font-medium">Widget color</label>
+              <label className="mb-1.5 block text-sm font-medium">
+                Widget color
+              </label>
               <div className="flex items-center gap-3">
                 <input
                   type="color"
@@ -463,11 +551,15 @@ function CreateAgentWizard() {
                   onChange={(e) => setPrimaryColor(e.target.value)}
                   className="h-10 w-10 rounded-lg border border-border cursor-pointer"
                 />
-                <span className="text-sm text-muted-foreground">{primaryColor}</span>
+                <span className="text-sm text-muted-foreground">
+                  {primaryColor}
+                </span>
               </div>
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-medium">Greeting message</label>
+              <label className="mb-1.5 block text-sm font-medium">
+                Greeting message
+              </label>
               <input
                 value={greeting}
                 onChange={(e) => setGreeting(e.target.value)}
@@ -483,26 +575,31 @@ function CreateAgentWizard() {
 
             {trainingError && !training && !createdId && (
               <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
-                Failed to train data sources. Please check your website URL and create the agent again.
+                Failed to train data sources. Please check your website URL and
+                create the agent again.
               </div>
             )}
 
             {createdId && (
               <div className="rounded-xl border border-primary/40 bg-primary/5 p-4">
                 <p className="text-sm font-medium">
-                  {trainingError ? "Agent created (with warnings)" : "Agent created!"}
+                  {trainingError
+                    ? "Agent created (with warnings)"
+                    : "Agent created!"}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   Embed this script on your website:
                 </p>
                 <pre className="mt-2 overflow-x-auto rounded-lg bg-background p-3 text-xs font-mono">
-                  {`<script src="https://botbaseai.com/widget.js" data-bot-id="${createdId}"></script>`}
+                  {`<script src="${embedBase}/widget.js" data-bot-id="${createdId}" data-base-url="${embedBase}"></script>`}
                 </pre>
               </div>
             )}
 
             {error && (
-              <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
+              <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+                {error}
+              </div>
             )}
 
             {!createdId && !training && (

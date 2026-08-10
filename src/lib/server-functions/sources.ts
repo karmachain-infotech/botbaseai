@@ -3,7 +3,13 @@ import { z } from "zod";
 import { getAdminClient } from "../supabase/admin";
 import { createClient } from "../supabase/server";
 import { trainSource } from "../rag/train";
-import { AuthError, DatabaseError, NotFoundError, ValidationError, handleServerError } from "../errors";
+import {
+  AuthError,
+  DatabaseError,
+  NotFoundError,
+  ValidationError,
+  handleServerError,
+} from "../errors";
 
 export const addSource = createServerFn({ method: "POST" })
   .inputValidator(
@@ -18,7 +24,10 @@ export const addSource = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     try {
       const supabase = await createClient();
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
       if (authError || !user) throw new AuthError();
 
       const admin = getAdminClient();
@@ -32,8 +41,11 @@ export const addSource = createServerFn({ method: "POST" })
         fileSize = buffer.length;
 
         const filePath = `${data.chatbotId}/${sourceId}/${data.name}`;
-        const { error: uploadError } = await admin.storage.from("sources").upload(filePath, buffer);
-        if (uploadError) throw new DatabaseError(`File upload failed: ${uploadError.message}`);
+        const { error: uploadError } = await admin.storage
+          .from("sources")
+          .upload(filePath, buffer);
+        if (uploadError)
+          throw new DatabaseError(`File upload failed: ${uploadError.message}`);
 
         content = filePath;
       }
@@ -42,7 +54,9 @@ export const addSource = createServerFn({ method: "POST" })
         try {
           JSON.parse(content);
         } catch {
-          throw new ValidationError("QA content must be valid JSON array of {question, answer} objects");
+          throw new ValidationError(
+            "QA content must be valid JSON array of {question, answer} objects",
+          );
         }
       }
 
@@ -75,7 +89,10 @@ export const listSources = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     try {
       const supabase = await createClient();
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
       if (authError || !user) throw new AuthError();
 
       const admin = getAdminClient();
@@ -93,11 +110,16 @@ export const listSources = createServerFn({ method: "GET" })
   });
 
 export const deleteSource = createServerFn({ method: "POST" })
-  .inputValidator(z.object({ chatbotId: z.string().uuid(), sourceId: z.string().uuid() }))
+  .inputValidator(
+    z.object({ chatbotId: z.string().uuid(), sourceId: z.string().uuid() }),
+  )
   .handler(async ({ data }) => {
     try {
       const supabase = await createClient();
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
       if (authError || !user) throw new AuthError();
 
       const admin = getAdminClient();
@@ -119,7 +141,10 @@ export const getTrainingStatus = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     try {
       const supabase = await createClient();
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
       if (authError || !user) throw new AuthError();
 
       const admin = getAdminClient();
@@ -133,7 +158,8 @@ export const getTrainingStatus = createServerFn({ method: "GET" })
       const list = sources ?? [];
       return {
         sources: list,
-        allTrained: list.length > 0 && list.every((s) => s.status === "trained"),
+        allTrained:
+          list.length > 0 && list.every((s) => s.status === "trained"),
         hasFailed: list.some((s) => s.status === "failed"),
       };
     } catch (error) {
@@ -146,7 +172,10 @@ export const retrainSource = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     try {
       const supabase = await createClient();
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
       if (authError || !user) throw new AuthError();
 
       const admin = getAdminClient();

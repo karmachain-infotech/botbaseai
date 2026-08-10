@@ -7,7 +7,11 @@ interface ParallaxCardProps {
   intensity?: number;
 }
 
-export function ParallaxCard({ children, className, intensity = 6 }: ParallaxCardProps) {
+export function ParallaxCard({
+  children,
+  className,
+  intensity = 6,
+}: ParallaxCardProps) {
   const ref = useRef<HTMLDivElement>(null);
   const prefersReduced = useReducedMotion();
 
@@ -21,7 +25,8 @@ export function ParallaxCard({ children, className, intensity = 6 }: ParallaxCar
 
   function handleLeave() {
     if (!ref.current) return;
-    ref.current.style.transform = "perspective(800px) rotateY(0deg) rotateX(0deg) scale3d(1, 1, 1)";
+    ref.current.style.transform =
+      "perspective(800px) rotateY(0deg) rotateX(0deg) scale3d(1, 1, 1)";
   }
 
   return (

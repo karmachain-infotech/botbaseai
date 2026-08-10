@@ -3,7 +3,12 @@ export class AppError extends Error {
   public readonly statusCode: number;
   public readonly userMessage: string;
 
-  constructor(opts: { code: string; message: string; userMessage: string; statusCode?: number }) {
+  constructor(opts: {
+    code: string;
+    message: string;
+    userMessage: string;
+    statusCode?: number;
+  }) {
     super(opts.message);
     this.name = "AppError";
     this.code = opts.code;
@@ -80,7 +85,10 @@ export class DatabaseError extends AppError {
 }
 
 export class ExternalServiceError extends AppError {
-  constructor(service: string, userMessage = `${service} service is currently unavailable. Please try again.`) {
+  constructor(
+    service: string,
+    userMessage = `${service} service is currently unavailable. Please try again.`,
+  ) {
     super({
       code: "EXTERNAL_SERVICE_ERROR",
       message: `${service} API error`,

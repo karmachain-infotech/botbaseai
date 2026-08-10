@@ -9,7 +9,11 @@ import { checkRateLimit } from "./lib/rate-limit";
 import { processStripeWebhook } from "./lib/server-functions/stripe";
 
 type ServerEntry = {
-  fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
+  fetch: (
+    request: Request,
+    env: unknown,
+    ctx: unknown,
+  ) => Promise<Response> | Response;
 };
 
 let serverEntryPromise: Promise<ServerEntry> | undefined;
@@ -25,17 +29,24 @@ async function getServerEntry(): Promise<ServerEntry> {
 
 // h3 swallows in-handler throws into a normal 500 Response with body
 // {"unhandled":true,"message":"HTTPError"} — try/catch alone never fires for those.
-async function normalizeCatastrophicSsrResponse(response: Response): Promise<Response> {
+async function normalizeCatastrophicSsrResponse(
+  response: Response,
+): Promise<Response> {
   if (response.status < 500) return response;
   const contentType = response.headers.get("content-type") ?? "";
   if (!contentType.includes("application/json")) return response;
 
   const body = await response.clone().text();
-  if (!body.includes('"unhandled":true') || !body.includes('"message":"HTTPError"')) {
+  if (
+    !body.includes('"unhandled":true') ||
+    !body.includes('"message":"HTTPError"')
+  ) {
     return response;
   }
 
-  console.error(consumeLastCapturedError() ?? new Error(`h3 swallowed SSR error: ${body}`));
+  console.error(
+    consumeLastCapturedError() ?? new Error(`h3 swallowed SSR error: ${body}`),
+  );
   return new Response(renderErrorPage(), {
     status: 500,
     headers: { "content-type": "text/html; charset=utf-8" },
@@ -50,10 +61,13 @@ const corsHeaders = {
 
 function parseCookies(cookie: string): { name: string; value: string }[] {
   if (!cookie) return [];
-  return cookie.split(";").filter(c => c.trim()).map((c) => {
-    const parts = c.trim().split("=");
-    return { name: parts[0], value: parts.slice(1).join("=") };
-  });
+  return cookie
+    .split(";")
+    .filter((c) => c.trim())
+    .map((c) => {
+      const parts = c.trim().split("=");
+      return { name: parts[0], value: parts.slice(1).join("=") };
+    });
 }
 
 async function getUserFromRequest(request: Request) {
@@ -63,11 +77,15 @@ async function getUserFromRequest(request: Request) {
   if (!supabaseUrl || !supabaseKey) return null;
   const supabase = createServerClient(supabaseUrl, supabaseKey, {
     cookies: {
-      getAll() { return parseCookies(cookie); },
+      getAll() {
+        return parseCookies(cookie);
+      },
       setAll() {},
     },
   });
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   return user;
 }
 
@@ -103,7 +121,10 @@ async function handleWidgetConfig(botId: string): Promise<Response> {
   }
 }
 
-async function handleWidgetChat(botId: string, request: Request): Promise<Response> {
+async function handleWidgetChat(
+  botId: string,
+  request: Request,
+): Promise<Response> {
   let body: { message?: string; sessionId?: string; conversationId?: string };
   try {
     body = (await request.json()) as typeof body;
@@ -152,7 +173,8 @@ async function handleWidgetChat(botId: string, request: Request): Promise<Respon
         .insert({ chatbot_id: botId, session_id: sessionId })
         .select()
         .single();
-      if (convErr) return jsonResponse({ error: "Failed to create conversation" }, 500);
+      if (convErr)
+        return jsonResponse({ error: "Failed to create conversation" }, 500);
       conversationId = conv!.id;
     } catch {
       return jsonResponse({ error: "Internal server error" }, 500);
@@ -163,35 +185,54 @@ async function handleWidgetChat(botId: string, request: Request): Promise<Respon
   const stream = new ReadableStream({
     async start(controller) {
       try {
-        controller.enqueue(encoder.encode(JSON.stringify({
-          type: "meta",
-          conversationId,
-        }) + "\n"));
+        controller.enqueue(
+          encoder.encode(
+            JSON.stringify({
+              type: "meta",
+              conversationId,
+            }) + "\n",
+          ),
+        );
 
-        await streamChat({
-          chatbotId: botId,
-          message,
-          sessionId,
-          conversationId,
-          chatbot,
-        }, (chunk) => {
-          controller.enqueue(encoder.encode(JSON.stringify({
-            type: "chunk",
-            content: chunk,
-          }) + "\n"));
-        });
+        await streamChat(
+          {
+            chatbotId: botId,
+            message,
+            sessionId,
+            conversationId,
+            chatbot,
+          },
+          (chunk) => {
+            controller.enqueue(
+              encoder.encode(
+                JSON.stringify({
+                  type: "chunk",
+                  content: chunk,
+                }) + "\n",
+              ),
+            );
+          },
+        );
 
-        controller.enqueue(encoder.encode(JSON.stringify({ type: "done" }) + "\n"));
+        controller.enqueue(
+          encoder.encode(JSON.stringify({ type: "done" }) + "\n"),
+        );
         controller.close();
       } catch (err) {
         console.error("[widgetChat] Error:", err);
         try {
-          controller.enqueue(encoder.encode(JSON.stringify({
-            type: "error",
-            content: "Sorry, something went wrong. Please try again.",
-          }) + "\n"));
+          controller.enqueue(
+            encoder.encode(
+              JSON.stringify({
+                type: "error",
+                content: "Sorry, something went wrong. Please try again.",
+              }) + "\n",
+            ),
+          );
           controller.close();
-        } catch { /* ignore */ }
+        } catch {
+          /* ignore */
+        }
       }
     },
   });
@@ -204,7 +245,10 @@ async function handleWidgetChat(botId: string, request: Request): Promise<Respon
   });
 }
 
-async function handlePlaygroundChat(botId: string, request: Request): Promise<Response> {
+async function handlePlaygroundChat(
+  botId: string,
+  request: Request,
+): Promise<Response> {
   const user = await getUserFromRequest(request);
   if (!user) {
     return jsonResponse({ error: "Unauthorized" }, 401);
@@ -247,24 +291,30 @@ async function handlePlaygroundChat(botId: string, request: Request): Promise<Re
   const stream = new ReadableStream({
     async start(controller) {
       try {
-        await streamChat({
-          chatbotId: botId,
-          message,
-          sessionId,
-          conversationId: body.conversationId,
-        }, (chunk) => {
-          controller.enqueue(encoder.encode(chunk));
-        });
+        await streamChat(
+          {
+            chatbotId: botId,
+            message,
+            sessionId,
+            conversationId: body.conversationId,
+          },
+          (chunk) => {
+            controller.enqueue(encoder.encode(chunk));
+          },
+        );
         controller.close();
       } catch (err) {
         console.error("[playgroundChat] Error:", err);
-const userMessage = err instanceof Error && "userMessage" in err
-  ? (err as { userMessage: string }).userMessage
-  : "Sorry, something went wrong. Please try again.";
-try {
-  controller.enqueue(encoder.encode(userMessage));
-  controller.close();
-} catch { /* ignore */ }
+        const userMessage =
+          err instanceof Error && "userMessage" in err
+            ? (err as { userMessage: string }).userMessage
+            : "Sorry, something went wrong. Please try again.";
+        try {
+          controller.enqueue(encoder.encode(userMessage));
+          controller.close();
+        } catch {
+          /* ignore */
+        }
       }
     },
   });
@@ -282,7 +332,10 @@ const playgroundPathRe = /^\/api\/playground\/([^/]+)\/chat$/;
 const debugSearchRe = /^\/api\/debug\/search\/([^/]+)$/;
 const stripeWebhookRe = /^\/api\/stripe\/webhook$/;
 
-async function handleDebugSearch(botId: string, request: Request): Promise<Response> {
+async function handleDebugSearch(
+  botId: string,
+  request: Request,
+): Promise<Response> {
   try {
     const admin = getAdminClient();
     const url = new URL(request.url);
@@ -309,7 +362,9 @@ async function handleDebugSearch(botId: string, request: Request): Promise<Respo
       const { searchSimilarChunks } = await import("./lib/rag/search");
       testSearchResult = await searchSimilarChunks(botId, testQuery, 0.3, 5);
     } catch (err) {
-      testSearchResult = { error: err instanceof Error ? err.message : String(err) };
+      testSearchResult = {
+        error: err instanceof Error ? err.message : String(err),
+      };
     }
 
     return jsonResponse({
@@ -335,7 +390,8 @@ async function handleStripeWebhook(request: Request): Promise<Response> {
     await processStripeWebhook(signature, body);
     return jsonResponse({ received: true });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Webhook processing failed";
+    const message =
+      err instanceof Error ? err.message : "Webhook processing failed";
     console.error("[stripeWebhook] Error:", message);
     return jsonResponse({ error: message }, 400);
   }

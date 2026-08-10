@@ -19,9 +19,7 @@ export function DashboardTopbar({ onToggleSidebar }: TopbarProps) {
   const router = useRouter();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
-  const initials = user?.email
-    ? user.email.slice(0, 2).toUpperCase()
-    : "?";
+  const initials = user?.email ? user.email.slice(0, 2).toUpperCase() : "?";
 
   function handleSearch(e: FormEvent) {
     e.preventDefault();
@@ -37,7 +35,11 @@ export function DashboardTopbar({ onToggleSidebar }: TopbarProps) {
   return (
     <header className="flex h-16 items-center justify-between gap-4 border-b border-border bg-background/80 px-4 backdrop-blur-xl sm:px-6">
       <div className="flex items-center gap-2 md:hidden">
-        <button onClick={onToggleSidebar} className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground" aria-label="Toggle sidebar">
+        <button
+          onClick={onToggleSidebar}
+          className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground"
+          aria-label="Toggle sidebar"
+        >
           <Menu className="h-5 w-5" />
         </button>
         <Link to="/" className="flex items-center gap-2">
@@ -46,7 +48,10 @@ export function DashboardTopbar({ onToggleSidebar }: TopbarProps) {
       </div>
 
       <form onSubmit={handleSearch} className="relative w-full max-w-md">
-        <button type="submit" className="absolute left-3 top-1/2 -translate-y-1/2 cursor-pointer">
+        <button
+          type="submit"
+          className="absolute left-3 top-1/2 -translate-y-1/2 cursor-pointer"
+        >
           <Search className="h-4 w-4 text-muted-foreground" />
         </button>
         <input
@@ -82,13 +87,19 @@ export function DashboardTopbar({ onToggleSidebar }: TopbarProps) {
             </div>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
-              <Link to="/dashboard/settings" className="flex items-center gap-2 cursor-pointer">
+              <Link
+                to="/dashboard/settings"
+                className="flex items-center gap-2 cursor-pointer"
+              >
                 <Settings className="h-4 w-4" />
                 Settings
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleSignOut} className="flex items-center gap-2 text-destructive cursor-pointer">
+            <DropdownMenuItem
+              onClick={handleSignOut}
+              className="flex items-center gap-2 text-destructive cursor-pointer"
+            >
               <LogOut className="h-4 w-4" />
               Sign out
             </DropdownMenuItem>

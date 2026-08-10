@@ -26,15 +26,26 @@ function formatMarkdown(text: string): string {
     const numberedMatch = line.match(/^(\s*)\d+[.)]\s+(.+)/);
 
     if (bulletMatch) {
-      if (!inList) { result.push("<ul>"); inList = true; listType = "ul"; }
+      if (!inList) {
+        result.push("<ul>");
+        inList = true;
+        listType = "ul";
+      }
       result.push(`<li>${bulletMatch[2]}</li>`);
       blankCount = 0;
     } else if (numberedMatch) {
-      if (!inList) { result.push("<ol>"); inList = true; listType = "ol"; }
+      if (!inList) {
+        result.push("<ol>");
+        inList = true;
+        listType = "ol";
+      }
       result.push(`<li>${numberedMatch[2]}</li>`);
       blankCount = 0;
     } else {
-      if (inList) { result.push(listType === "ul" ? "</ul>" : "</ol>"); inList = false; }
+      if (inList) {
+        result.push(listType === "ul" ? "</ul>" : "</ol>");
+        inList = false;
+      }
       if (line.trim() === "") {
         blankCount++;
       } else {
@@ -51,7 +62,17 @@ function formatMarkdown(text: string): string {
   return result.join("");
 }
 
-const ALLOWED_TAGS = new Set(["strong", "em", "code", "pre", "ul", "ol", "li", "span", "br"]);
+const ALLOWED_TAGS = new Set([
+  "strong",
+  "em",
+  "code",
+  "pre",
+  "ul",
+  "ol",
+  "li",
+  "span",
+  "br",
+]);
 function sanitizeHtml(html: string): string {
   return html.replace(/<(\/?)(\w+)[^>]*>/g, (match, slash, tag) => {
     if (ALLOWED_TAGS.has(tag.toLowerCase())) return `<${slash}${tag}>`;
@@ -71,14 +92,26 @@ interface Message {
   content: string;
 }
 
-export function ChatWidget({ botId, botName, primaryColor, greeting }: ChatWidgetProps) {
+export function ChatWidget({
+  botId,
+  botName,
+  primaryColor,
+  greeting,
+}: ChatWidgetProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
   const [fullText, setFullText] = useState("");
   const chatEnd = useRef<HTMLDivElement>(null);
-  const sessionId = useRef("w_" + (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)) + "_" + Date.now());
+  const sessionId = useRef(
+    "w_" +
+      (typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : Math.random().toString(36).slice(2)) +
+      "_" +
+      Date.now(),
+  );
   const conversationId = useRef<string | undefined>(undefined);
 
   const { displayedText, isTyping } = useTypewriter(fullText);
@@ -129,7 +162,10 @@ export function ChatWidget({ botId, botName, primaryColor, greeting }: ChatWidge
 
       conversationId.current = undefined;
       setThinking(false);
-      setMessages((prev) => [...prev, { role: "assistant", content: accumulated }]);
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: accumulated },
+      ]);
       setFullText(accumulated);
     } catch (err) {
       console.error("Widget chat error:", err);
@@ -186,9 +222,15 @@ export function ChatWidget({ botId, botName, primaryColor, greeting }: ChatWidge
                   justifyContent: "center",
                 }}
               >
-                <Bot style={{ width: "18px", height: "18px", color: "white" }} />
+                <Bot
+                  style={{ width: "18px", height: "18px", color: "white" }}
+                />
               </div>
-              <span style={{ color: "white", fontWeight: 600, fontSize: "14px" }}>{botName}</span>
+              <span
+                style={{ color: "white", fontWeight: 600, fontSize: "14px" }}
+              >
+                {botName}
+              </span>
             </div>
             <button
               onClick={() => setIsOpen(false)}
@@ -217,33 +259,52 @@ export function ChatWidget({ botId, botName, primaryColor, greeting }: ChatWidge
             }}
           >
             {messages.map((m, i) => {
-              const isLastAssistant = i === messages.length - 1 && m.role === "assistant";
+              const isLastAssistant =
+                i === messages.length - 1 && m.role === "assistant";
               const showTyping = isLastAssistant && isTyping;
               return (
                 <div
                   key={i}
                   style={{
                     display: "flex",
-                    justifyContent: m.role === "user" ? "flex-end" : "flex-start",
+                    justifyContent:
+                      m.role === "user" ? "flex-end" : "flex-start",
                   }}
                 >
                   <div
                     style={{
                       maxWidth: "80%",
                       padding: "10px 14px",
-                      borderRadius: m.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
+                      borderRadius:
+                        m.role === "user"
+                          ? "16px 16px 4px 16px"
+                          : "16px 16px 16px 4px",
                       fontSize: "14px",
                       lineHeight: "1.6",
                       color: m.role === "user" ? "white" : "#1f2937",
                       background: m.role === "user" ? primaryColor : "white",
-                      boxShadow: m.role === "user" ? "none" : "0 1px 2px rgba(0,0,0,0.05)",
+                      boxShadow:
+                        m.role === "user"
+                          ? "none"
+                          : "0 1px 2px rgba(0,0,0,0.05)",
                       wordBreak: "break-word",
                     }}
                   >
                     {showTyping ? (
-                      <span>{displayedText}<span style={{ animation: "blink 1s step-start infinite" }}>|</span></span>
+                      <span>
+                        {displayedText}
+                        <span
+                          style={{ animation: "blink 1s step-start infinite" }}
+                        >
+                          |
+                        </span>
+                      </span>
                     ) : (
-                      <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(formatMarkdown(m.content)) }} />
+                      <div
+                        dangerouslySetInnerHTML={{
+                          __html: sanitizeHtml(formatMarkdown(m.content)),
+                        }}
+                      />
                     )}
                   </div>
                 </div>
@@ -252,16 +313,18 @@ export function ChatWidget({ botId, botName, primaryColor, greeting }: ChatWidge
 
             {thinking && (
               <div style={{ display: "flex", justifyContent: "flex-start" }}>
-                <div style={{
-                  maxWidth: "80%",
-                  padding: "10px 14px",
-                  borderRadius: "16px 16px 16px 4px",
-                  fontSize: "14px",
-                  lineHeight: "1.6",
-                  color: "#1f2937",
-                  background: "white",
-                  boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
-                }}>
+                <div
+                  style={{
+                    maxWidth: "80%",
+                    padding: "10px 14px",
+                    borderRadius: "16px 16px 16px 4px",
+                    fontSize: "14px",
+                    lineHeight: "1.6",
+                    color: "#1f2937",
+                    background: "white",
+                    boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+                  }}
+                >
                   Thinking{dots}
                 </div>
               </div>

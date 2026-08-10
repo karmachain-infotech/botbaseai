@@ -1,10 +1,23 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { getStripeClient, DEFAULT_CREDIT_LIMITS, getPlanFromPriceId, getOrCreatePrice, PLAN_AMOUNTS } from "../stripe";
+import {
+  getStripeClient,
+  DEFAULT_CREDIT_LIMITS,
+  getPlanFromPriceId,
+  getOrCreatePrice,
+  PLAN_AMOUNTS,
+} from "../stripe";
 import { getCreditLimits, fireNotificationWebhook } from "./settings";
 import { getAdminClient } from "../supabase/admin";
 import { createClient } from "../supabase/server";
-import { AuthError, DatabaseError, ExternalServiceError, ValidationError, handleServerError, NotFoundError } from "../errors";
+import {
+  AuthError,
+  DatabaseError,
+  ExternalServiceError,
+  ValidationError,
+  handleServerError,
+  NotFoundError,
+} from "../errors";
 
 export const createCheckoutSession = createServerFn({ method: "POST" })
   .inputValidator(
@@ -19,7 +32,10 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     try {
       const supabase = await createClient();
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
       if (authError || !user) throw new AuthError();
 
       const admin = getAdminClient();
@@ -36,8 +52,13 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
       // If user already has an active Stripe subscription, redirect to portal instead
       if (dbUser?.stripe_subscription_id && dbUser?.plan !== "free") {
         try {
-          const existingSub = await stripe.subscriptions.retrieve(dbUser.stripe_subscription_id);
-          if (existingSub.status === "active" || existingSub.status === "trialing") {
+          const existingSub = await stripe.subscriptions.retrieve(
+            dbUser.stripe_subscription_id,
+          );
+          if (
+            existingSub.status === "active" ||
+            existingSub.status === "trialing"
+          ) {
             const portal = await stripe.billingPortal.sessions.create({
               customer: dbUser.stripe_customer_id!,
               return_url: data.successUrl,
@@ -64,9 +85,16 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
             .from("users")
             .update({ stripe_customer_id: customerId })
             .eq("id", user.id);
-          if (updateErr) console.error("[createCheckoutSession] Failed to save customer ID:", updateErr.message);
+          if (updateErr)
+            console.error(
+              "[createCheckoutSession] Failed to save customer ID:",
+              updateErr.message,
+            );
         } catch (stripeError) {
-          throw new ExternalServiceError("Stripe", "Failed to create customer. Please try again.");
+          throw new ExternalServiceError(
+            "Stripe",
+            "Failed to create customer. Please try again.",
+          );
         }
       }
 
@@ -75,11 +103,20 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
       if (!resolvedPriceId.startsWith("price_") && data.plan && data.interval) {
         const amounts = PLAN_AMOUNTS[data.plan.toLowerCase()];
         if (!amounts) {
-          throw new ExternalServiceError("Stripe", `Unknown plan: ${data.plan}`);
+          throw new ExternalServiceError(
+            "Stripe",
+            `Unknown plan: ${data.plan}`,
+          );
         }
-        const amount = data.interval === "monthly" ? amounts.monthly : amounts.yearly;
+        const amount =
+          data.interval === "monthly" ? amounts.monthly : amounts.yearly;
         const stripeInterval = data.interval === "monthly" ? "month" : "year";
-        resolvedPriceId = await getOrCreatePrice(stripe, amount, stripeInterval, data.plan);
+        resolvedPriceId = await getOrCreatePrice(
+          stripe,
+          amount,
+          stripeInterval,
+          data.plan,
+        );
       }
 
       let session;
@@ -94,7 +131,10 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
         });
       } catch (stripeError) {
         console.error("[createCheckoutSession] Stripe error:", stripeError);
-        throw new ExternalServiceError("Stripe", "Failed to create checkout session. Please try again.");
+        throw new ExternalServiceError(
+          "Stripe",
+          "Failed to create checkout session. Please try again.",
+        );
       }
 
       return { url: session.url };
@@ -103,11 +143,14 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
     }
   });
 
-export const createPortalSession = createServerFn({ method: "POST" })
-  .handler(async () => {
+export const createPortalSession = createServerFn({ method: "POST" }).handler(
+  async () => {
     try {
       const supabase = await createClient();
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
       if (authError || !user) throw new AuthError();
 
       const admin = getAdminClient();
@@ -120,7 +163,8 @@ export const createPortalSession = createServerFn({ method: "POST" })
         .single();
 
       if (dbError) throw new DatabaseError(dbError.message);
-      if (!dbUser?.stripe_customer_id) throw new NotFoundError("Stripe customer");
+      if (!dbUser?.stripe_customer_id)
+        throw new NotFoundError("Stripe customer");
 
       let session;
       try {
@@ -130,20 +174,27 @@ export const createPortalSession = createServerFn({ method: "POST" })
         });
       } catch (stripeError) {
         console.error("[createPortalSession] Stripe error:", stripeError);
-        throw new ExternalServiceError("Stripe", "Failed to create portal session. Please try again.");
+        throw new ExternalServiceError(
+          "Stripe",
+          "Failed to create portal session. Please try again.",
+        );
       }
 
       return { url: session.url };
     } catch (error) {
       throw handleServerError(error, "createPortalSession");
     }
-  });
+  },
+);
 
-export const syncSubscription = createServerFn({ method: "POST" })
-  .handler(async () => {
+export const syncSubscription = createServerFn({ method: "POST" }).handler(
+  async () => {
     try {
       const supabase = await createClient();
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
       if (authError || !user) throw new AuthError();
 
       const admin = getAdminClient();
@@ -164,7 +215,10 @@ export const syncSubscription = createServerFn({ method: "POST" })
       });
 
       const activeSub = subscriptions.data.find(
-        (s) => s.status === "active" || s.status === "trialing" || s.status === "past_due",
+        (s) =>
+          s.status === "active" ||
+          s.status === "trialing" ||
+          s.status === "past_due",
       );
 
       // If no active subscription, or it's cancelled at period end — downgrade immediately
@@ -205,16 +259,21 @@ export const syncSubscription = createServerFn({ method: "POST" })
 
       if (updateErr) throw new DatabaseError(updateErr.message);
 
-      fireNotificationWebhook("subscription.synced", { userId: user.id, plan, credits });
+      fireNotificationWebhook("subscription.synced", {
+        userId: user.id,
+        plan,
+        credits,
+      });
 
       return { synced: true, plan };
     } catch (error) {
       throw handleServerError(error, "syncSubscription");
     }
-  });
+  },
+);
 
-export const getPriceIds = createServerFn({ method: "GET" })
-  .handler(async () => {
+export const getPriceIds = createServerFn({ method: "GET" }).handler(
+  async () => {
     return {
       hobby: {
         monthly: process.env.NEXT_PUBLIC_STRIPE_PRICE_HOBBY_MONTHLY || "",
@@ -229,9 +288,13 @@ export const getPriceIds = createServerFn({ method: "GET" })
         yearly: process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_YEARLY || "",
       },
     };
-  });
+  },
+);
 
-async function resetToFreePlan(admin: ReturnType<typeof getAdminClient>, customerId: string) {
+async function resetToFreePlan(
+  admin: ReturnType<typeof getAdminClient>,
+  customerId: string,
+) {
   const limits = await getCreditLimits();
   const { error } = await admin
     .from("users")
@@ -243,7 +306,10 @@ async function resetToFreePlan(admin: ReturnType<typeof getAdminClient>, custome
     })
     .eq("stripe_customer_id", customerId);
   if (error) {
-    console.error("[processStripeWebhook] reset to free failed:", error.message);
+    console.error(
+      "[processStripeWebhook] reset to free failed:",
+      error.message,
+    );
     throw new DatabaseError(error.message);
   }
 }
@@ -258,7 +324,11 @@ export async function processStripeWebhook(
 
     let event;
     try {
-      event = stripe.webhooks.constructEvent(body, signature, process.env.STRIPE_WEBHOOK_SECRET!);
+      event = stripe.webhooks.constructEvent(
+        body,
+        signature,
+        process.env.STRIPE_WEBHOOK_SECRET!,
+      );
     } catch (webhookError) {
       throw new ValidationError("Invalid webhook signature");
     }
@@ -292,10 +362,17 @@ export async function processStripeWebhook(
           .eq("stripe_customer_id", subscription.customer);
 
         if (updateErr) {
-          console.error("[processStripeWebhook] subscription created failed:", updateErr.message);
+          console.error(
+            "[processStripeWebhook] subscription created failed:",
+            updateErr.message,
+          );
           throw new DatabaseError(updateErr.message);
         }
-        fireNotificationWebhook("subscription.created", { customer: subscription.customer, plan, credits });
+        fireNotificationWebhook("subscription.created", {
+          customer: subscription.customer,
+          plan,
+          credits,
+        });
         break;
       }
 
@@ -310,7 +387,8 @@ export async function processStripeWebhook(
 
         // If the subscription is no longer active, or cancelled at period end — downgrade immediately
         if (
-          subscription.status !== "active" && subscription.status !== "trialing" ||
+          (subscription.status !== "active" &&
+            subscription.status !== "trialing") ||
           subscription.cancel_at_period_end
         ) {
           if (
@@ -344,17 +422,26 @@ export async function processStripeWebhook(
           .eq("stripe_customer_id", subscription.customer);
 
         if (updateErr) {
-          console.error("[processStripeWebhook] subscription updated failed:", updateErr.message);
+          console.error(
+            "[processStripeWebhook] subscription updated failed:",
+            updateErr.message,
+          );
           throw new DatabaseError(updateErr.message);
         }
-        fireNotificationWebhook("subscription.updated", { customer: subscription.customer, plan, credits });
+        fireNotificationWebhook("subscription.updated", {
+          customer: subscription.customer,
+          plan,
+          credits,
+        });
         break;
       }
 
       case "customer.subscription.deleted": {
         const deletedSub = event.data.object as { customer: string };
         await resetToFreePlan(admin, deletedSub.customer);
-        fireNotificationWebhook("subscription.deleted", { customer: deletedSub.customer });
+        fireNotificationWebhook("subscription.deleted", {
+          customer: deletedSub.customer,
+        });
         break;
       }
 
@@ -366,24 +453,34 @@ export async function processStripeWebhook(
           .eq("stripe_customer_id", invoice.customer);
 
         if (invoiceErr) {
-          console.error("[processStripeWebhook] invoice paid failed:", invoiceErr.message);
+          console.error(
+            "[processStripeWebhook] invoice paid failed:",
+            invoiceErr.message,
+          );
           throw new DatabaseError(invoiceErr.message);
         }
         break;
       }
 
       case "invoice.payment_failed": {
-        const failedInvoice = event.data.object as { customer: string; attempt_count?: number };
+        const failedInvoice = event.data.object as {
+          customer: string;
+          attempt_count?: number;
+        };
         console.error(
           `[processStripeWebhook] Payment failed for customer ${failedInvoice.customer}` +
-            (failedInvoice.attempt_count ? ` (attempt ${failedInvoice.attempt_count})` : ""),
+            (failedInvoice.attempt_count
+              ? ` (attempt ${failedInvoice.attempt_count})`
+              : ""),
         );
         break;
       }
 
       case "charge.refunded": {
         const charge = event.data.object as { customer: string };
-        console.error(`[processStripeWebhook] Charge refunded for customer ${charge.customer}`);
+        console.error(
+          `[processStripeWebhook] Charge refunded for customer ${charge.customer}`,
+        );
         await resetToFreePlan(admin, charge.customer);
         break;
       }
@@ -391,7 +488,9 @@ export async function processStripeWebhook(
 
     if ((eventType as string) === "payment_intent.refunded") {
       const pi = event.data.object as { customer: string };
-      console.error(`[processStripeWebhook] Payment refunded for customer ${pi.customer}`);
+      console.error(
+        `[processStripeWebhook] Payment refunded for customer ${pi.customer}`,
+      );
       await resetToFreePlan(admin, pi.customer);
     }
 

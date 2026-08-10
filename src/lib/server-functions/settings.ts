@@ -52,46 +52,56 @@ export interface PublicPlatformSettings {
   feature_allow_custom_domain: boolean;
 }
 
-export const getPublicPlatformSettings = createServerFn({ method: "GET" })
-  .handler(async () => {
-    try {
-      const admin = getAdminClient();
-      const { data } = await admin
-        .from("platform_settings")
-        .select("key, value");
+export const getPublicPlatformSettings = createServerFn({
+  method: "GET",
+}).handler(async () => {
+  try {
+    const admin = getAdminClient();
+    const { data } = await admin.from("platform_settings").select("key, value");
 
-      const defaults: PublicPlatformSettings = {
-        platform_name: "BotbaseAI",
-        platform_logo: null,
-        maintenance_mode: false,
-        announcement_banner_enabled: false,
-        announcement_banner_message: "",
-        feature_allow_export: true,
-        feature_allow_team: false,
-        feature_allow_custom_domain: false,
-      };
+    const defaults: PublicPlatformSettings = {
+      platform_name: "BotbaseAI",
+      platform_logo: null,
+      maintenance_mode: false,
+      announcement_banner_enabled: false,
+      announcement_banner_message: "",
+      feature_allow_export: true,
+      feature_allow_team: false,
+      feature_allow_custom_domain: false,
+    };
 
-      if (!data) return defaults;
+    if (!data) return defaults;
 
-      const map: Record<string, unknown> = {};
-      for (const row of data as Array<{ key: string; value: unknown }>) {
-        map[row.key] = row.value;
-      }
-
-      return {
-        platform_name: (map.platform_name as string) ?? defaults.platform_name,
-        platform_logo: (map.platform_logo as string | null) ?? defaults.platform_logo,
-        maintenance_mode: map.maintenance_mode === true || map.maintenance_mode === "true",
-        announcement_banner_enabled: map.announcement_banner_enabled === true || map.announcement_banner_enabled === "true",
-        announcement_banner_message: (map.announcement_banner_message as string) ?? defaults.announcement_banner_message,
-        feature_allow_export: map.feature_allow_export === true || map.feature_allow_export === "true",
-        feature_allow_team: map.feature_allow_team === true || map.feature_allow_team === "true",
-        feature_allow_custom_domain: map.feature_allow_custom_domain === true || map.feature_allow_custom_domain === "true",
-      };
-    } catch (error) {
-      throw handleServerError(error, "getPublicPlatformSettings");
+    const map: Record<string, unknown> = {};
+    for (const row of data as Array<{ key: string; value: unknown }>) {
+      map[row.key] = row.value;
     }
-  });
+
+    return {
+      platform_name: (map.platform_name as string) ?? defaults.platform_name,
+      platform_logo:
+        (map.platform_logo as string | null) ?? defaults.platform_logo,
+      maintenance_mode:
+        map.maintenance_mode === true || map.maintenance_mode === "true",
+      announcement_banner_enabled:
+        map.announcement_banner_enabled === true ||
+        map.announcement_banner_enabled === "true",
+      announcement_banner_message:
+        (map.announcement_banner_message as string) ??
+        defaults.announcement_banner_message,
+      feature_allow_export:
+        map.feature_allow_export === true ||
+        map.feature_allow_export === "true",
+      feature_allow_team:
+        map.feature_allow_team === true || map.feature_allow_team === "true",
+      feature_allow_custom_domain:
+        map.feature_allow_custom_domain === true ||
+        map.feature_allow_custom_domain === "true",
+    };
+  } catch (error) {
+    throw handleServerError(error, "getPublicPlatformSettings");
+  }
+});
 
 export async function getWebhookUrl(): Promise<string> {
   try {
@@ -112,14 +122,21 @@ export async function getWebhookUrl(): Promise<string> {
   return "";
 }
 
-export async function fireNotificationWebhook(event: string, payload: Record<string, unknown>) {
+export async function fireNotificationWebhook(
+  event: string,
+  payload: Record<string, unknown>,
+) {
   const url = await getWebhookUrl();
   if (!url) return;
   try {
     await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ event, data: payload, timestamp: new Date().toISOString() }),
+      body: JSON.stringify({
+        event,
+        data: payload,
+        timestamp: new Date().toISOString(),
+      }),
       signal: AbortSignal.timeout(5000),
     });
   } catch (err) {

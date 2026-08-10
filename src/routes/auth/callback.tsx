@@ -7,9 +7,7 @@ import { ensureUserExists } from "@/lib/server-functions/auth";
 
 export const Route = createFileRoute("/auth/callback")({
   head: () => ({
-    meta: [
-      { title: "Authenticating — BotbaseAI" },
-    ],
+    meta: [{ title: "Authenticating — BotbaseAI" }],
   }),
   component: AuthCallback,
 });
@@ -29,7 +27,9 @@ function AuthCallback() {
       }
 
       const supabase = createClient();
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
       if (!session?.user) {
         navigate({ to: "/login" });

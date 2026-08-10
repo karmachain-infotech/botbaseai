@@ -3,19 +3,30 @@ import { z } from "zod";
 import { getAdminClient } from "../supabase/admin";
 import { createClient } from "../supabase/server";
 import { getStripeClient } from "../stripe";
-import { AuthError, DatabaseError, NotFoundError, ValidationError, handleServerError } from "../errors";
+import {
+  AuthError,
+  DatabaseError,
+  NotFoundError,
+  ValidationError,
+  handleServerError,
+} from "../errors";
 
-export const getUserProfile = createServerFn({ method: "GET" })
-  .handler(async () => {
+export const getUserProfile = createServerFn({ method: "GET" }).handler(
+  async () => {
     try {
       const supabase = await createClient();
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
       if (authError || !user) throw new AuthError();
 
       const admin = getAdminClient();
       const { data: profile, error } = await admin
         .from("users")
-        .select("id, email, name, avatar_url, plan, message_credits_used, message_credits_limit, stripe_customer_id")
+        .select(
+          "id, email, name, avatar_url, plan, message_credits_used, message_credits_limit, stripe_customer_id",
+        )
         .eq("id", user.id)
         .single();
 
@@ -25,7 +36,8 @@ export const getUserProfile = createServerFn({ method: "GET" })
     } catch (error) {
       throw handleServerError(error, "getUserProfile");
     }
-  });
+  },
+);
 
 export const updateProfile = createServerFn({ method: "POST" })
   .inputValidator(
@@ -37,7 +49,10 @@ export const updateProfile = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     try {
       const supabase = await createClient();
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
       if (authError || !user) throw new AuthError();
 
       const admin = getAdminClient();
@@ -47,7 +62,10 @@ export const updateProfile = createServerFn({ method: "POST" })
 
       if (Object.keys(updates).length === 0) return { updated: false };
 
-      const { error } = await admin.from("users").update(updates).eq("id", user.id);
+      const { error } = await admin
+        .from("users")
+        .update(updates)
+        .eq("id", user.id);
       if (error) throw new DatabaseError(error.message);
       return { updated: true };
     } catch (error) {
@@ -65,19 +83,26 @@ export const changePassword = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     try {
       const supabase = await createClient();
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
       if (authError || !user) throw new AuthError();
 
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: user.email!,
         password: data.currentPassword,
       });
-      if (signInError) throw new ValidationError("Current password is incorrect");
+      if (signInError)
+        throw new ValidationError("Current password is incorrect");
 
       const admin = getAdminClient();
-      const { error: updateError } = await admin.auth.admin.updateUserById(user.id, {
-        password: data.newPassword,
-      });
+      const { error: updateError } = await admin.auth.admin.updateUserById(
+        user.id,
+        {
+          password: data.newPassword,
+        },
+      );
       if (updateError) throw new DatabaseError(updateError.message);
       return { updated: true };
     } catch (error) {
@@ -85,11 +110,14 @@ export const changePassword = createServerFn({ method: "POST" })
     }
   });
 
-export const deleteAccount = createServerFn({ method: "POST" })
-  .handler(async () => {
+export const deleteAccount = createServerFn({ method: "POST" }).handler(
+  async () => {
     try {
       const supabase = await createClient();
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
       if (authError || !user) throw new AuthError();
 
       const admin = getAdminClient();
@@ -109,7 +137,11 @@ export const deleteAccount = createServerFn({ method: "POST" })
             limit: 1,
           });
           for (const sub of subs.data) {
-            if (sub.status === "active" || sub.status === "trialing" || sub.status === "past_due") {
+            if (
+              sub.status === "active" ||
+              sub.status === "trialing" ||
+              sub.status === "past_due"
+            ) {
               await stripe.subscriptions.cancel(sub.id);
             }
           }
@@ -119,13 +151,28 @@ export const deleteAccount = createServerFn({ method: "POST" })
         }
       }
 
-      const tables = ["conversations", "messages", "sources", "embeddings", "ai_actions", "chatbots"];
+      const tables = [
+        "conversations",
+        "messages",
+        "sources",
+        "embeddings",
+        "ai_actions",
+        "chatbots",
+      ];
       for (const table of tables) {
-        await admin.from(table as "chatbots").delete().eq("user_id", user.id).maybeSingle();
+        await admin
+          .from(table as "chatbots")
+          .delete()
+          .eq("user_id", user.id)
+          .maybeSingle();
       }
 
-      const { error: profileError } = await admin.from("users").delete().eq("id", user.id);
-      if (profileError) console.error("Failed to delete profile:", profileError.message);
+      const { error: profileError } = await admin
+        .from("users")
+        .delete()
+        .eq("id", user.id);
+      if (profileError)
+        console.error("Failed to delete profile:", profileError.message);
 
       const { error: authError2 } = await admin.auth.admin.deleteUser(user.id);
       if (authError2) throw new DatabaseError(authError2.message);
@@ -134,4 +181,5 @@ export const deleteAccount = createServerFn({ method: "POST" })
     } catch (error) {
       throw handleServerError(error, "deleteAccount");
     }
-  });
+  },
+);

@@ -78,7 +78,15 @@ async function keywordSearch(
 
     if (error || !data || data.length === 0) return [];
 
-    const scored = (data as { id: string; chatbot_id: string; source_id: string; content: string; metadata: Record<string, unknown> }[])
+    const scored = (
+      data as {
+        id: string;
+        chatbot_id: string;
+        source_id: string;
+        content: string;
+        metadata: Record<string, unknown>;
+      }[]
+    )
       .map((row) => {
         const contentLower = row.content.toLowerCase();
         let matches = 0;

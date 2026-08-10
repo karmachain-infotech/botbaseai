@@ -15,7 +15,10 @@ export const getAnalytics = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     try {
       const supabase = await createClient();
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
       if (authError || !user) throw new AuthError();
       const admin = getAdminClient();
 
@@ -57,10 +60,19 @@ export const getAnalytics = createServerFn({ method: "GET" })
         if (msgErr) throw new DatabaseError(msgErr.message);
 
         messageCount = messages?.length ?? 0;
-        const assistantMsgs = messages?.filter((m: { role: string }) => m.role === "assistant") ?? [];
-        avgResponseTime = assistantMsgs.length > 0
-          ? Math.round(assistantMsgs.reduce((sum: number, m: { response_time_ms: number }) => sum + (m.response_time_ms ?? 0), 0) / assistantMsgs.length)
-          : 0;
+        const assistantMsgs =
+          messages?.filter((m: { role: string }) => m.role === "assistant") ??
+          [];
+        avgResponseTime =
+          assistantMsgs.length > 0
+            ? Math.round(
+                assistantMsgs.reduce(
+                  (sum: number, m: { response_time_ms: number }) =>
+                    sum + (m.response_time_ms ?? 0),
+                  0,
+                ) / assistantMsgs.length,
+              )
+            : 0;
       }
 
       // Ratings
@@ -71,10 +83,15 @@ export const getAnalytics = createServerFn({ method: "GET" })
         .not("rating", "is", null);
       if (ratingErr) throw new DatabaseError(ratingErr.message);
 
-      const ratings = (ratedConvs ?? []).map((c: { rating: number | null }) => c.rating).filter(Boolean) as number[];
-      const avgRating = ratings.length > 0
-        ? Math.round((ratings.reduce((a, b) => a + b, 0) / ratings.length) * 10) / 10
-        : 0;
+      const ratings = (ratedConvs ?? [])
+        .map((c: { rating: number | null }) => c.rating)
+        .filter(Boolean) as number[];
+      const avgRating =
+        ratings.length > 0
+          ? Math.round(
+              (ratings.reduce((a, b) => a + b, 0) / ratings.length) * 10,
+            ) / 10
+          : 0;
 
       // Escalation rate
       const { count: escalatedCount, error: escErr } = await admin
@@ -86,9 +103,12 @@ export const getAnalytics = createServerFn({ method: "GET" })
         .lte("created_at", endDate);
       if (escErr) throw new DatabaseError(escErr.message);
 
-      const escalationRate = (totalConversations ?? 0) > 0
-        ? Math.round(((escalatedCount ?? 0) / (totalConversations ?? 0)) * 100)
-        : 0;
+      const escalationRate =
+        (totalConversations ?? 0) > 0
+          ? Math.round(
+              ((escalatedCount ?? 0) / (totalConversations ?? 0)) * 100,
+            )
+          : 0;
 
       // Resolution rate
       const { count: resolvedCount, error: resErr } = await admin
@@ -100,9 +120,10 @@ export const getAnalytics = createServerFn({ method: "GET" })
         .lte("created_at", endDate);
       if (resErr) throw new DatabaseError(resErr.message);
 
-      const resolutionRate = (totalConversations ?? 0) > 0
-        ? Math.round(((resolvedCount ?? 0) / (totalConversations ?? 0)) * 100)
-        : 0;
+      const resolutionRate =
+        (totalConversations ?? 0) > 0
+          ? Math.round(((resolvedCount ?? 0) / (totalConversations ?? 0)) * 100)
+          : 0;
 
       // Top questions (most frequent user messages)
       const { data: userMessages, error: umErr } = await admin
@@ -149,7 +170,10 @@ export const getMessageVolume = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     try {
       const supabase = await createClient();
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
       if (authError || !user) throw new AuthError();
       const admin = getAdminClient();
 
@@ -195,18 +219,24 @@ export const getMessageVolume = createServerFn({ method: "GET" })
       });
 
       return {
-        volume: Object.entries(volume).map(([date, count]) => ({ date, count })),
+        volume: Object.entries(volume).map(([date, count]) => ({
+          date,
+          count,
+        })),
       };
     } catch (error) {
       throw handleServerError(error, "getMessageVolume");
     }
   });
 
-export const getAggregateAnalytics = createServerFn({ method: "GET" })
-  .handler(async () => {
+export const getAggregateAnalytics = createServerFn({ method: "GET" }).handler(
+  async () => {
     try {
       const supabase = await createClient();
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
       if (authError || !user) throw new AuthError();
       const admin = getAdminClient();
 
@@ -217,8 +247,10 @@ export const getAggregateAnalytics = createServerFn({ method: "GET" })
       if (botErr) throw new DatabaseError(botErr.message);
 
       const totalAgents = chatbots?.length ?? 0;
-      const liveAgents = chatbots?.filter((b) => b.status === "live").length ?? 0;
-      const totalMessages = chatbots?.reduce((sum, b) => sum + (b.message_count ?? 0), 0) ?? 0;
+      const liveAgents =
+        chatbots?.filter((b) => b.status === "live").length ?? 0;
+      const totalMessages =
+        chatbots?.reduce((sum, b) => sum + (b.message_count ?? 0), 0) ?? 0;
 
       const botIds = (chatbots ?? []).map((b: { id: string }) => b.id);
 
@@ -235,7 +267,9 @@ export const getAggregateAnalytics = createServerFn({ method: "GET" })
 
         if (conversations) {
           totalConversations = conversations.length;
-          resolvedCount = conversations.filter((c) => c.status === "resolved").length;
+          resolvedCount = conversations.filter(
+            (c) => c.status === "resolved",
+          ).length;
         }
 
         const { data: messages, error: msgErr } = await admin
@@ -246,15 +280,20 @@ export const getAggregateAnalytics = createServerFn({ method: "GET" })
           .not("response_time_ms", "is", null);
         if (msgErr) throw new DatabaseError(msgErr.message);
 
-        const rts = (messages ?? []).map((m) => m.response_time_ms).filter(Boolean) as number[];
+        const rts = (messages ?? [])
+          .map((m) => m.response_time_ms)
+          .filter(Boolean) as number[];
         if (rts.length > 0) {
-          avgResponseTime = Math.round(rts.reduce((a, b) => a + b, 0) / rts.length);
+          avgResponseTime = Math.round(
+            rts.reduce((a, b) => a + b, 0) / rts.length,
+          );
         }
       }
 
-      const resolvedRate = totalConversations > 0
-        ? Math.round((resolvedCount / totalConversations) * 100)
-        : 0;
+      const resolvedRate =
+        totalConversations > 0
+          ? Math.round((resolvedCount / totalConversations) * 100)
+          : 0;
 
       return {
         totalConversations,
@@ -267,14 +306,18 @@ export const getAggregateAnalytics = createServerFn({ method: "GET" })
     } catch (error) {
       throw handleServerError(error, "getAggregateAnalytics");
     }
-  });
+  },
+);
 
 export const getUnansweredQuestions = createServerFn({ method: "GET" })
   .inputValidator(z.object({ chatbotId: z.string().uuid() }))
   .handler(async ({ data }) => {
     try {
       const supabase = await createClient();
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
       if (authError || !user) throw new AuthError();
       const admin = getAdminClient();
 
@@ -295,17 +338,19 @@ export const getUnansweredQuestions = createServerFn({ method: "GET" })
         .eq("role", "assistant");
       if (msgErr) throw new DatabaseError(msgErr.message);
 
-      const unansweredMessages = (messages ?? []).filter((m: { content: string }) => {
-        const lower = m.content.toLowerCase();
-        return (
-          lower.includes("i don't know") ||
-          lower.includes("i don't have") ||
-          lower.includes("i'm not sure") ||
-          lower.includes("i cannot") ||
-          lower.includes("i am not able") ||
-          lower.includes("i don't understand")
-        );
-      });
+      const unansweredMessages = (messages ?? []).filter(
+        (m: { content: string }) => {
+          const lower = m.content.toLowerCase();
+          return (
+            lower.includes("i don't know") ||
+            lower.includes("i don't have") ||
+            lower.includes("i'm not sure") ||
+            lower.includes("i cannot") ||
+            lower.includes("i am not able") ||
+            lower.includes("i don't understand")
+          );
+        },
+      );
 
       return { unanswered: unansweredMessages };
     } catch (error) {

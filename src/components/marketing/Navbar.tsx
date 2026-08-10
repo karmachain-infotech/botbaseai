@@ -94,7 +94,10 @@ export function Navbar() {
             ))}
           </ul>
           <div className="mt-3 flex flex-col gap-2">
-            <Link to="/login" className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground">
+            <Link
+              to="/login"
+              className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground"
+            >
               Login
             </Link>
             <Link
@@ -105,7 +108,7 @@ export function Navbar() {
             </Link>
           </div>
         </div>
-        )}
-      </motion.header>
+      )}
+    </motion.header>
   );
 }

@@ -1,17 +1,37 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { ArrowRight, ShieldCheck, Lock, Globe, Users, Sliders, Building2, Check, Sparkles, Brain, PhoneForwarded, BarChart3 } from "lucide-react";
+import {
+  ArrowRight,
+  ShieldCheck,
+  Lock,
+  Globe,
+  Users,
+  Sliders,
+  Building2,
+  Check,
+  Sparkles,
+  Brain,
+  PhoneForwarded,
+  BarChart3,
+} from "lucide-react";
 import { Navbar } from "@/components/marketing/Navbar";
 import { Footer } from "@/components/marketing/Footer";
 import { AnimatedSection } from "@/components/motion/AnimatedSection";
-import { StaggerContainer, staggerItem } from "@/components/motion/StaggerContainer";
+import {
+  StaggerContainer,
+  staggerItem,
+} from "@/components/motion/StaggerContainer";
 import { TextReveal } from "@/components/motion/TextReveal";
 
 export const Route = createFileRoute("/enterprise")({
   head: () => ({
     meta: [
       { title: "Enterprise — BotbaseAI" },
-      { name: "description", content: "Enterprise-grade AI support platform with SSO, audit logs, compliance, and dedicated support." },
+      {
+        name: "description",
+        content:
+          "Enterprise-grade AI support platform with SSO, audit logs, compliance, and dedicated support.",
+      },
     ],
   }),
   component: Enterprise,
@@ -99,9 +119,24 @@ const supportTiers = [
 ];
 
 const integrations = [
-  "Zendesk", "Salesforce", "Slack", "Microsoft Teams", "Shopify", "HubSpot",
-  "ServiceNow", "Jira", "Confluence", "Notion", "Intercom", "Freshdesk",
-  "Twilio", "WhatsApp", "Messenger", "Instagram", "SAP", "Oracle",
+  "Zendesk",
+  "Salesforce",
+  "Slack",
+  "Microsoft Teams",
+  "Shopify",
+  "HubSpot",
+  "ServiceNow",
+  "Jira",
+  "Confluence",
+  "Notion",
+  "Intercom",
+  "Freshdesk",
+  "Twilio",
+  "WhatsApp",
+  "Messenger",
+  "Instagram",
+  "SAP",
+  "Oracle",
 ];
 
 function Enterprise() {
@@ -116,31 +151,46 @@ function Enterprise() {
             className="mx-auto mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-4 py-1.5 text-xs font-medium text-muted-foreground"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
+            transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] as const }}
           >
-            <ShieldCheck className="h-3.5 w-3.5 text-primary" /> SOC 2 Type II & GDPR compliant
+            <ShieldCheck className="h-3.5 w-3.5 text-primary" /> SOC 2 Type II &
+            GDPR compliant
           </motion.div>
           <motion.h1
             className="text-balance text-4xl font-extrabold tracking-tight sm:text-6xl"
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.15, ease: [0.25, 0.1, 0.25, 1] }}
+            transition={{
+              duration: 0.6,
+              delay: 0.15,
+              ease: [0.25, 0.1, 0.25, 1] as const,
+            }}
           >
-            Enterprise-grade AI support <span className="text-gradient">for global teams</span>
+            Enterprise-grade AI support{" "}
+            <span className="text-gradient">for global teams</span>
           </motion.h1>
           <motion.p
             className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
+            transition={{
+              duration: 0.5,
+              delay: 0.25,
+              ease: [0.25, 0.1, 0.25, 1] as const,
+            }}
           >
-            Security, compliance, and control at scale. BotbaseAI Enterprise is built for organizations with the most demanding requirements.
+            Security, compliance, and control at scale. BotbaseAI Enterprise is
+            built for organizations with the most demanding requirements.
           </motion.p>
           <motion.div
             className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
+            transition={{
+              duration: 0.5,
+              delay: 0.35,
+              ease: [0.25, 0.1, 0.25, 1] as const,
+            }}
           >
             <Link
               to="/signup"
@@ -157,14 +207,20 @@ function Enterprise() {
 
       <AnimatedSection className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
         <div className="mb-12 text-center">
-          <p className="text-sm font-semibold uppercase tracking-wider text-primary">Capabilities</p>
+          <p className="text-sm font-semibold uppercase tracking-wider text-primary">
+            Capabilities
+          </p>
           <h2 className="mx-auto mt-3 max-w-2xl text-balance text-3xl font-bold tracking-tight sm:text-4xl">
             Everything your organization needs
           </h2>
         </div>
         <StaggerContainer className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {capabilities.map((c) => (
-            <motion.div key={c.title} variants={staggerItem} className="rounded-2xl border border-border bg-card p-6 transition-colors hover:border-primary/50">
+            <motion.div
+              key={c.title}
+              variants={staggerItem}
+              className="rounded-2xl border border-border bg-card p-6 transition-colors hover:border-primary/50"
+            >
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-brand">
                 <c.icon className="h-6 w-6 text-primary-foreground" />
               </div>
@@ -178,21 +234,29 @@ function Enterprise() {
       <AnimatedSection className="border-y border-border/60 bg-card/40">
         <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
           <div className="mb-12 text-center">
-            <p className="text-sm font-semibold uppercase tracking-wider text-primary">Security & compliance</p>
+            <p className="text-sm font-semibold uppercase tracking-wider text-primary">
+              Security & compliance
+            </p>
             <h2 className="mx-auto mt-3 max-w-2xl text-balance text-3xl font-bold tracking-tight sm:text-4xl">
               Built on a foundation of trust
             </h2>
           </div>
           <StaggerContainer className="grid gap-6 md:grid-cols-2">
             {securityFeatures.map((s) => (
-              <motion.div key={s.title} variants={staggerItem} className="rounded-2xl border border-border bg-card p-6">
+              <motion.div
+                key={s.title}
+                variants={staggerItem}
+                className="rounded-2xl border border-border bg-card p-6"
+              >
                 <div className="flex items-start gap-4">
                   <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-brand">
                     <s.icon className="h-5 w-5 text-primary-foreground" />
                   </div>
                   <div>
                     <h3 className="font-semibold">{s.title}</h3>
-                    <p className="mt-1 text-sm text-muted-foreground">{s.desc}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {s.desc}
+                    </p>
                   </div>
                 </div>
               </motion.div>
@@ -203,7 +267,9 @@ function Enterprise() {
 
       <AnimatedSection className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
         <div className="mb-12 text-center">
-          <p className="text-sm font-semibold uppercase tracking-wider text-primary">Support</p>
+          <p className="text-sm font-semibold uppercase tracking-wider text-primary">
+            Support
+          </p>
           <h2 className="mx-auto mt-3 max-w-2xl text-balance text-3xl font-bold tracking-tight sm:text-4xl">
             Enterprise support plans
           </h2>
@@ -214,7 +280,9 @@ function Enterprise() {
               key={tier.name}
               variants={staggerItem}
               className={`relative rounded-2xl border bg-card p-6 ${
-                tier.popular ? "border-primary shadow-card glow-primary" : "border-border"
+                tier.popular
+                  ? "border-primary shadow-card glow-primary"
+                  : "border-border"
               }`}
             >
               {tier.popular && (
@@ -235,7 +303,9 @@ function Enterprise() {
                   <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
                   <div>
                     <p className="text-sm font-medium">Support</p>
-                    <p className="text-xs text-muted-foreground">{tier.support}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {tier.support}
+                    </p>
                   </div>
                 </li>
                 <li className="flex gap-3">
@@ -249,7 +319,9 @@ function Enterprise() {
                   <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
                   <div>
                     <p className="text-sm font-medium">Training</p>
-                    <p className="text-xs text-muted-foreground">{tier.training}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {tier.training}
+                    </p>
                   </div>
                 </li>
               </ul>
@@ -261,14 +333,23 @@ function Enterprise() {
       <AnimatedSection className="border-y border-border/60 bg-card/40">
         <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
           <div className="mb-12 text-center">
-            <p className="text-sm font-semibold uppercase tracking-wider text-primary">Integrations</p>
+            <p className="text-sm font-semibold uppercase tracking-wider text-primary">
+              Integrations
+            </p>
             <h2 className="mx-auto mt-3 max-w-2xl text-balance text-3xl font-bold tracking-tight sm:text-4xl">
               Connects with your enterprise stack
             </h2>
           </div>
-          <StaggerContainer className="flex flex-wrap justify-center gap-3" staggerDelay={0.02}>
+          <StaggerContainer
+            className="flex flex-wrap justify-center gap-3"
+            staggerDelay={0.02}
+          >
             {integrations.map((i) => (
-              <motion.span key={i} variants={staggerItem} className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-muted-foreground">
+              <motion.span
+                key={i}
+                variants={staggerItem}
+                className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-muted-foreground"
+              >
                 {i}
               </motion.span>
             ))}
@@ -282,7 +363,7 @@ function Enterprise() {
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-60px" }}
-          transition={{ duration: 0.6, ease: [0.25, 0.1, 0.25, 1] }}
+          transition={{ duration: 0.6, ease: [0.25, 0.1, 0.25, 1] as const }}
         >
           <div className="pointer-events-none absolute inset-0 hero-glow" />
           <div className="relative">

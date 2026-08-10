@@ -1,6 +1,16 @@
 import { createFileRoute, Link, useRouterState } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
-import { Bot, Send, ArrowLeft, Sparkles, BarChart3, Settings, FileText, Code2, Activity } from "lucide-react";
+import {
+  Bot,
+  Send,
+  ArrowLeft,
+  Sparkles,
+  BarChart3,
+  Settings,
+  FileText,
+  Code2,
+  Activity,
+} from "lucide-react";
 import { getChatbot } from "@/lib/server-functions/chatbots";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useThinkingAnimation } from "@/hooks/use-thinking-animation";
@@ -19,7 +29,11 @@ interface ChatMessage {
 const agentTabs = [
   { label: "Playground", to: "/dashboard/agents/$id", icon: Bot },
   { label: "Sources", to: "/dashboard/agents/$id/sources", icon: FileText },
-  { label: "Analytics", to: "/dashboard/agents/$id/analytics", icon: BarChart3 },
+  {
+    label: "Analytics",
+    to: "/dashboard/agents/$id/analytics",
+    icon: BarChart3,
+  },
   { label: "Activity", to: "/dashboard/agents/$id/activity", icon: Activity },
   { label: "Settings", to: "/dashboard/agents/$id/settings", icon: Settings },
   { label: "Widget", to: "/dashboard/agents/$id/embed-test", icon: Code2 },
@@ -28,7 +42,9 @@ const agentTabs = [
 function AgentPlayground() {
   const { id } = Route.useParams();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const [agent, setAgent] = useState<Pick<Chatbot, "name" | "status"> | null>(null);
+  const [agent, setAgent] = useState<Pick<Chatbot, "name" | "status"> | null>(
+    null,
+  );
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
@@ -49,14 +65,19 @@ function AgentPlayground() {
     try {
       if (typeof window !== "undefined") {
         const existing = localStorage.getItem("playground_session");
-        if (existing) { sessionIdRef.current = existing; return existing; }
+        if (existing) {
+          sessionIdRef.current = existing;
+          return existing;
+        }
       }
       const id = crypto.randomUUID();
       sessionIdRef.current = id;
-      if (typeof window !== "undefined") localStorage.setItem("playground_session", id);
+      if (typeof window !== "undefined")
+        localStorage.setItem("playground_session", id);
       return id;
     } catch {
-      const fallback = "pg_" + Math.random().toString(36).slice(2, 9) + "_" + Date.now();
+      const fallback =
+        "pg_" + Math.random().toString(36).slice(2, 9) + "_" + Date.now();
       sessionIdRef.current = fallback;
       return fallback;
     }
@@ -96,15 +117,22 @@ function AgentPlayground() {
       }
 
       setThinking(false);
-      setMessages((prev) => [...prev, { role: "assistant", content: accumulated }]);
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: accumulated },
+      ]);
       setFullText(accumulated);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Something went wrong";
+      const message =
+        err instanceof Error ? err.message : "Something went wrong";
       console.error("Chat error:", err);
       setThinking(false);
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: "Sorry, something went wrong. Please try again." },
+        {
+          role: "assistant",
+          content: "Sorry, something went wrong. Please try again.",
+        },
       ]);
     }
   }
@@ -113,15 +141,21 @@ function AgentPlayground() {
 
   useEffect(() => {
     let cancelled = false;
-    getChatbot({ data: { id } }).then((bot) => {
-      if (bot && !cancelled) setAgent(bot as Pick<Chatbot, "name" | "status">);
-    }).catch((err) => {
-      console.error("Failed to load agent:", err);
-      if (!cancelled) setError("Failed to load agent.");
-    }).finally(() => {
-      if (!cancelled) setAgentLoading(false);
-    });
-    return () => { cancelled = true; };
+    getChatbot({ data: { id } })
+      .then((bot) => {
+        if (bot && !cancelled)
+          setAgent(bot as Pick<Chatbot, "name" | "status">);
+      })
+      .catch((err) => {
+        console.error("Failed to load agent:", err);
+        if (!cancelled) setError("Failed to load agent.");
+      })
+      .finally(() => {
+        if (!cancelled) setAgentLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
   if (agentLoading) {
@@ -148,19 +182,25 @@ function AgentPlayground() {
   if (error) {
     return (
       <div className="mx-auto flex h-[calc(100vh-4rem)] max-w-4xl flex-col px-4 py-6">
-        <Link to="/dashboard"
-          className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+        <Link
+          to="/dashboard"
+          className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+        >
           <ArrowLeft className="h-4 w-4" /> Back to agents
         </Link>
-        <div className="mt-8 rounded-lg bg-destructive/10 p-4 text-sm text-destructive">{error}</div>
+        <div className="mt-8 rounded-lg bg-destructive/10 p-4 text-sm text-destructive">
+          {error}
+        </div>
       </div>
     );
   }
 
   return (
     <div className="mx-auto flex h-[calc(100vh-4rem)] max-w-4xl flex-col px-4 py-6">
-      <Link to="/dashboard"
-        className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+      <Link
+        to="/dashboard"
+        className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+      >
         <ArrowLeft className="h-4 w-4" /> Back to agents
       </Link>
 
@@ -181,12 +221,16 @@ function AgentPlayground() {
           const tabTo = tab.to.replace("$id", id).replace(/\/$/, "");
           const isActive = pathname.replace(/\/$/, "") === tabTo;
           return (
-            <Link key={tab.label} to={tab.to} params={{ id }}
+            <Link
+              key={tab.label}
+              to={tab.to}
+              params={{ id }}
               className={`flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                 isActive
                   ? "bg-gradient-brand text-primary-foreground"
                   : "text-muted-foreground hover:text-foreground"
-              }`}>
+              }`}
+            >
               <tab.icon className="h-4 w-4" /> {tab.label}
             </Link>
           );
@@ -201,8 +245,12 @@ function AgentPlayground() {
             <p className="max-w-md text-sm text-muted-foreground">
               Send a message below or try a sample.
             </p>
-            <button onClick={() => { setInput("Hello! What can you help me with?"); }}
-              className="rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-secondary/80">
+            <button
+              onClick={() => {
+                setInput("Hello! What can you help me with?");
+              }}
+              className="rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-secondary/80"
+            >
               Try "Hello! What can you help me with?"
             </button>
           </div>
@@ -210,13 +258,22 @@ function AgentPlayground() {
 
         <div className="space-y-4">
           {messages.map((m, i) => {
-            const isLastAssistant = i === messages.length - 1 && m.role === "assistant";
-            const displayContent = isLastAssistant && isTyping ? displayedText : m.content;
+            const isLastAssistant =
+              i === messages.length - 1 && m.role === "assistant";
+            const displayContent =
+              isLastAssistant && isTyping ? displayedText : m.content;
             return (
-              <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm ${
-                  m.role === "user" ? "bg-gradient-brand text-primary-foreground" : "bg-secondary text-foreground"
-                }`}>
+              <div
+                key={i}
+                className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
+              >
+                <div
+                  className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm ${
+                    m.role === "user"
+                      ? "bg-gradient-brand text-primary-foreground"
+                      : "bg-secondary text-foreground"
+                  }`}
+                >
                   {displayContent}
                   {isLastAssistant && isTyping && (
                     <span className="animate-blink">|</span>
@@ -239,12 +296,19 @@ function AgentPlayground() {
       </div>
 
       <div className="mt-4 flex gap-3">
-        <input value={input} onChange={(e) => setInput(e.target.value)}
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSend()}
-          placeholder="Type a test message..." disabled={thinking || isTyping}
-          className="flex-1 rounded-xl border border-border bg-card px-4 py-3 text-sm outline-none transition-colors focus:border-primary" />
-        <button onClick={handleSend} disabled={!input.trim() || thinking || isTyping}
-          className="flex items-center gap-2 rounded-xl bg-gradient-brand px-5 py-3 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50">
+          placeholder="Type a test message..."
+          disabled={thinking || isTyping}
+          className="flex-1 rounded-xl border border-border bg-card px-4 py-3 text-sm outline-none transition-colors focus:border-primary"
+        />
+        <button
+          onClick={handleSend}
+          disabled={!input.trim() || thinking || isTyping}
+          className="flex items-center gap-2 rounded-xl bg-gradient-brand px-5 py-3 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+        >
           <Send className="h-4 w-4" />
           Send
         </button>

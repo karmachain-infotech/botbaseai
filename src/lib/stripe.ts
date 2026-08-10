@@ -17,7 +17,9 @@ export function getStripeClient() {
 export function getStripePublishableKey() {
   const key = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
   if (!key) {
-    throw new Error("NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY environment variable is not set");
+    throw new Error(
+      "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY environment variable is not set",
+    );
   }
   return key;
 }
@@ -33,15 +35,30 @@ function requirePriceId(key: string, label: string): string {
 
 export const PRICE_IDS = {
   hobby: {
-    monthly: requirePriceId("NEXT_PUBLIC_STRIPE_PRICE_HOBBY_MONTHLY", "Hobby Monthly"),
-    yearly: requirePriceId("NEXT_PUBLIC_STRIPE_PRICE_HOBBY_YEARLY", "Hobby Yearly"),
+    monthly: requirePriceId(
+      "NEXT_PUBLIC_STRIPE_PRICE_HOBBY_MONTHLY",
+      "Hobby Monthly",
+    ),
+    yearly: requirePriceId(
+      "NEXT_PUBLIC_STRIPE_PRICE_HOBBY_YEARLY",
+      "Hobby Yearly",
+    ),
   },
   standard: {
-    monthly: requirePriceId("NEXT_PUBLIC_STRIPE_PRICE_STANDARD_MONTHLY", "Standard Monthly"),
-    yearly: requirePriceId("NEXT_PUBLIC_STRIPE_PRICE_STANDARD_YEARLY", "Standard Yearly"),
+    monthly: requirePriceId(
+      "NEXT_PUBLIC_STRIPE_PRICE_STANDARD_MONTHLY",
+      "Standard Monthly",
+    ),
+    yearly: requirePriceId(
+      "NEXT_PUBLIC_STRIPE_PRICE_STANDARD_YEARLY",
+      "Standard Yearly",
+    ),
   },
   pro: {
-    monthly: requirePriceId("NEXT_PUBLIC_STRIPE_PRICE_PRO_MONTHLY", "Pro Monthly"),
+    monthly: requirePriceId(
+      "NEXT_PUBLIC_STRIPE_PRICE_PRO_MONTHLY",
+      "Pro Monthly",
+    ),
     yearly: requirePriceId("NEXT_PUBLIC_STRIPE_PRICE_PRO_YEARLY", "Pro Yearly"),
   },
 } as const;
@@ -69,20 +86,21 @@ function requirePlanPrice(key: string, fallback: number): number {
   return isNaN(parsed) ? fallback : parsed;
 }
 
-export const PLAN_AMOUNTS: Record<string, { monthly: number; yearly: number }> = {
-  hobby: {
-    monthly: requirePlanPrice("NEXT_PUBLIC_PLAN_PRICE_HOBBY_MONTHLY", 32),
-    yearly: requirePlanPrice("NEXT_PUBLIC_PLAN_PRICE_HOBBY_YEARLY", 384),
-  },
-  standard: {
-    monthly: requirePlanPrice("NEXT_PUBLIC_PLAN_PRICE_STANDARD_MONTHLY", 120),
-    yearly: requirePlanPrice("NEXT_PUBLIC_PLAN_PRICE_STANDARD_YEARLY", 1440),
-  },
-  pro: {
-    monthly: requirePlanPrice("NEXT_PUBLIC_PLAN_PRICE_PRO_MONTHLY", 400),
-    yearly: requirePlanPrice("NEXT_PUBLIC_PLAN_PRICE_PRO_YEARLY", 4800),
-  },
-};
+export const PLAN_AMOUNTS: Record<string, { monthly: number; yearly: number }> =
+  {
+    hobby: {
+      monthly: requirePlanPrice("NEXT_PUBLIC_PLAN_PRICE_HOBBY_MONTHLY", 32),
+      yearly: requirePlanPrice("NEXT_PUBLIC_PLAN_PRICE_HOBBY_YEARLY", 384),
+    },
+    standard: {
+      monthly: requirePlanPrice("NEXT_PUBLIC_PLAN_PRICE_STANDARD_MONTHLY", 120),
+      yearly: requirePlanPrice("NEXT_PUBLIC_PLAN_PRICE_STANDARD_YEARLY", 1440),
+    },
+    pro: {
+      monthly: requirePlanPrice("NEXT_PUBLIC_PLAN_PRICE_PRO_MONTHLY", 400),
+      yearly: requirePlanPrice("NEXT_PUBLIC_PLAN_PRICE_PRO_YEARLY", 4800),
+    },
+  };
 
 export async function getOrCreatePrice(
   stripe: Stripe,

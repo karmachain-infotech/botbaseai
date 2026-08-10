@@ -140,7 +140,23 @@ export interface AdminDashboardStats {
   messagesPerDay: { date: string; count: number }[];
   revenueOverTime: { date: string; amount: number }[];
   planDistribution: { plan: string; count: number }[];
-  recentSignups: { id: string; email: string; name: string; created_at: string }[];
-  recentChatbots: { id: string; name: string; user_email: string; created_at: string }[];
-  recentSubscriptionChanges: { id: string; user_email: string; plan: string; action: string; created_at: string }[];
+  recentSignups: {
+    id: string;
+    email: string;
+    name: string;
+    created_at: string;
+  }[];
+  recentChatbots: {
+    id: string;
+    name: string;
+    user_email: string;
+    created_at: string;
+  }[];
+  recentSubscriptionChanges: {
+    id: string;
+    user_email: string;
+    plan: string;
+    action: string;
+    created_at: string;
+  }[];
 }

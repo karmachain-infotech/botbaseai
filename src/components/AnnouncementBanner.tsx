@@ -12,7 +12,11 @@ export function AnnouncementBanner() {
     staleTime: 60_000,
   });
 
-  if (!settings?.announcement_banner_enabled || !settings.announcement_banner_message || dismissed) {
+  if (
+    !settings?.announcement_banner_enabled ||
+    !settings.announcement_banner_message ||
+    dismissed
+  ) {
     return null;
   }
 

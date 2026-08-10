@@ -1,4 +1,10 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  type ReactNode,
+} from "react";
 import { createClient, isSupabaseConfigured } from "./supabase/client";
 import type { User } from "@supabase/supabase-js";
 import { refreshSession } from "./server-functions/auth";
@@ -43,7 +49,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           try {
             const result = await checkIsAdmin();
             if (!cancelled) setIsAdmin(result.isAdmin);
-          } catch {}
+          } catch {
+            /* non-fatal: default to non-admin */
+          }
           if (!cancelled) setLoading(false);
           return;
         }
@@ -58,7 +66,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               try {
                 const adminResult = await checkIsAdmin();
                 if (!cancelled) setIsAdmin(adminResult.isAdmin);
-              } catch {}
+              } catch {
+                /* non-fatal: default to non-admin */
+              }
             }
           }
         } else if (!cancelled) {
@@ -74,9 +84,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     getSession();
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!cancelled) setUser(session?.user ?? null);
-    });
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        if (!cancelled) setUser(session?.user ?? null);
+      },
+    );
 
     return () => {
       cancelled = true;

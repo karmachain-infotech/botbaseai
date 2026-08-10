@@ -5,12 +5,21 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function withTimeout<T>(promise: Promise<T>, ms: number, label?: string): Promise<T> {
+export function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  label?: string,
+): Promise<T> {
   return Promise.race([
     promise,
     new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error(label ? `Timed out: ${label}` : "Operation timed out")), ms),
+      setTimeout(
+        () =>
+          reject(
+            new Error(label ? `Timed out: ${label}` : "Operation timed out"),
+          ),
+        ms,
+      ),
     ),
   ]);
 }
-

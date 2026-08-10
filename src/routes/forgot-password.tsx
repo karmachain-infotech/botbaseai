@@ -9,7 +9,10 @@ export const Route = createFileRoute("/forgot-password")({
   head: () => ({
     meta: [
       { title: "Forgot password — BotbaseAI" },
-      { name: "description", content: "Reset your BotbaseAI account password." },
+      {
+        name: "description",
+        content: "Reset your BotbaseAI account password.",
+      },
     ],
   }),
   component: ForgotPassword,
@@ -28,9 +31,12 @@ function ForgotPassword() {
 
     try {
       const supabase = createClient();
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+        email,
+        {
+          redirectTo: `${window.location.origin}/reset-password`,
+        },
+      );
       if (resetError) {
         setError(resetError.message);
       } else {
@@ -52,11 +58,26 @@ function ForgotPassword() {
             <TriangleAlert className="mx-auto h-12 w-12 text-primary" />
             <h2 className="mt-4 text-xl font-bold">Supabase not configured</h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Set <code className="rounded bg-secondary px-1.5 py-0.5 text-xs">VITE_SUPABASE_URL</code> and{" "}
-              <code className="rounded bg-secondary px-1.5 py-0.5 text-xs">VITE_SUPABASE_ANON_KEY</code> in{" "}
-              <code className="rounded bg-secondary px-1.5 py-0.5 text-xs">.env.local</code> to enable authentication.
+              Set{" "}
+              <code className="rounded bg-secondary px-1.5 py-0.5 text-xs">
+                VITE_SUPABASE_URL
+              </code>{" "}
+              and{" "}
+              <code className="rounded bg-secondary px-1.5 py-0.5 text-xs">
+                VITE_SUPABASE_ANON_KEY
+              </code>{" "}
+              in{" "}
+              <code className="rounded bg-secondary px-1.5 py-0.5 text-xs">
+                .env.local
+              </code>{" "}
+              to enable authentication.
             </p>
-            <Link to="/" className="mt-6 inline-block text-sm text-primary hover:underline">← Back to home</Link>
+            <Link
+              to="/"
+              className="mt-6 inline-block text-sm text-primary hover:underline"
+            >
+              ← Back to home
+            </Link>
           </div>
         </div>
         <Footer />
@@ -72,11 +93,17 @@ function ForgotPassword() {
           {sent ? (
             <div className="text-center">
               <CheckCircle className="mx-auto h-12 w-12 text-primary" />
-              <h1 className="mt-4 text-2xl font-bold tracking-tight">Check your email</h1>
+              <h1 className="mt-4 text-2xl font-bold tracking-tight">
+                Check your email
+              </h1>
               <p className="mt-2 text-sm text-muted-foreground">
-                We sent a password reset link to <span className="font-medium text-foreground">{email}</span>.
+                We sent a password reset link to{" "}
+                <span className="font-medium text-foreground">{email}</span>.
               </p>
-              <Link to="/login" className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline">
+              <Link
+                to="/login"
+                className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+              >
                 <ArrowLeft className="h-4 w-4" /> Back to login
               </Link>
             </div>
@@ -87,18 +114,26 @@ function ForgotPassword() {
                   <Mail className="h-5 w-5 text-primary-foreground" />
                 </span>
                 <div>
-                  <h1 className="text-xl font-bold tracking-tight">Forgot password?</h1>
-                  <p className="text-sm text-muted-foreground">No worries, we'll send you reset instructions.</p>
+                  <h1 className="text-xl font-bold tracking-tight">
+                    Forgot password?
+                  </h1>
+                  <p className="text-sm text-muted-foreground">
+                    No worries, we'll send you reset instructions.
+                  </p>
                 </div>
               </div>
 
               {error && (
-                <div className="mt-4 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
+                <div className="mt-4 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+                  {error}
+                </div>
               )}
 
               <form onSubmit={handleSubmit} className="mt-6 space-y-4">
                 <div>
-                  <label className="text-sm font-medium" htmlFor="email">Email address</label>
+                  <label className="text-sm font-medium" htmlFor="email">
+                    Email address
+                  </label>
                   <input
                     id="email"
                     type="email"
@@ -119,7 +154,10 @@ function ForgotPassword() {
               </form>
 
               <p className="mt-6 text-center text-sm text-muted-foreground">
-                <Link to="/login" className="font-medium text-primary hover:underline">
+                <Link
+                  to="/login"
+                  className="font-medium text-primary hover:underline"
+                >
                   ← Back to login
                 </Link>
               </p>

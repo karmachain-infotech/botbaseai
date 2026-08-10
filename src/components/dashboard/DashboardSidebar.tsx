@@ -1,5 +1,14 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Bot, BarChart3, MessageSquare, Plug, Settings, Sparkles, X, Monitor } from "lucide-react";
+import {
+  Bot,
+  BarChart3,
+  MessageSquare,
+  Plug,
+  Settings,
+  Sparkles,
+  X,
+  Monitor,
+} from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { getPublicPlatformSettings } from "@/lib/server-functions/settings";
 
@@ -37,9 +46,14 @@ export function DashboardSidebar({ isOpen, onClose }: SidebarProps) {
       <div className="flex h-16 items-center justify-between gap-2 border-b border-border px-6">
         <Link to="/" className="flex items-center gap-2" onClick={handleNav}>
           <img src="/logos.svg" alt={platformName} className="h-8 w-8" />
-          <span className="text-lg font-bold tracking-tight">{platformName}</span>
+          <span className="text-lg font-bold tracking-tight">
+            {platformName}
+          </span>
         </Link>
-        <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground md:hidden">
+        <button
+          onClick={onClose}
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground md:hidden"
+        >
           <X className="h-5 w-5" />
         </button>
       </div>
@@ -48,7 +62,9 @@ export function DashboardSidebar({ isOpen, onClose }: SidebarProps) {
         {navItems.map((item) => {
           const isActive =
             item.to === "/dashboard"
-              ? pathname === "/dashboard" || pathname === "/dashboard/" || pathname.startsWith("/dashboard/agents/")
+              ? pathname === "/dashboard" ||
+                pathname === "/dashboard/" ||
+                pathname.startsWith("/dashboard/agents/")
               : pathname === item.to || pathname.startsWith(item.to + "/");
           return (
             <Link

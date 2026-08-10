@@ -1,7 +1,12 @@
 import { getAdminClient } from "../supabase/admin";
 import { searchSimilarChunks } from "./search";
 import { generateStream } from "../llm";
-import { handleServerError, NotFoundError, DatabaseError, ValidationError } from "../errors";
+import {
+  handleServerError,
+  NotFoundError,
+  DatabaseError,
+  ValidationError,
+} from "../errors";
 import type { Chatbot } from "../../types/database";
 
 interface ChatRequest {
@@ -26,7 +31,9 @@ const thanksPattern = /^(thanks|thank you|ty|thx|thankyou)\W*$/i;
 async function checkAndDeductCredit(userId: string): Promise<void> {
   const supabase = getAdminClient();
   // Use raw SQL for atomic check-and-deduct
-  const { error } = await supabase.rpc("deduct_message_credit", { p_user_id: userId } as never);
+  const { error } = await supabase.rpc("deduct_message_credit", {
+    p_user_id: userId,
+  } as never);
   if (error) {
     // If RPC doesn't exist, the error message may contain "function not found"
     // fall back to the safe read-check-write pattern
@@ -36,9 +43,14 @@ async function checkAndDeductCredit(userId: string): Promise<void> {
       .eq("id", userId)
       .single();
     if (fetchErr || !user) return;
-    const u = user as unknown as { message_credits_used: number; message_credits_limit: number };
+    const u = user as unknown as {
+      message_credits_used: number;
+      message_credits_limit: number;
+    };
     if (u.message_credits_used >= u.message_credits_limit) {
-      throw new ValidationError("Message credits exhausted. Please upgrade your plan.");
+      throw new ValidationError(
+        "Message credits exhausted. Please upgrade your plan.",
+      );
     }
     const { error: updateErr } = await supabase
       .from("users")
@@ -56,16 +68,18 @@ export async function streamChat(
 ): Promise<ChatResponse> {
   const supabase = getAdminClient();
 
-  const bot: Chatbot = req.chatbot ?? await (async () => {
-    const { data, error } = await supabase
-      .from("chatbots")
-      .select("*")
-      .eq("id", req.chatbotId)
-      .single();
-    if (error) throw new DatabaseError(error.message);
-    if (!data) throw new NotFoundError("Chatbot");
-    return data as unknown as Chatbot;
-  })();
+  const bot: Chatbot =
+    req.chatbot ??
+    (await (async () => {
+      const { data, error } = await supabase
+        .from("chatbots")
+        .select("*")
+        .eq("id", req.chatbotId)
+        .single();
+      if (error) throw new DatabaseError(error.message);
+      if (!data) throw new NotFoundError("Chatbot");
+      return data as unknown as Chatbot;
+    })());
 
   // Check credit limit before processing and deduct immediately
   await checkAndDeductCredit(bot.user_id);
@@ -86,9 +100,20 @@ export async function streamChat(
   // Fast-path: skip LLM for simple greetings/thanks on first message
   if (greetingPattern.test(req.message)) {
     await Promise.all([
-      supabase.from("messages").insert({ conversation_id: conversationId, role: "user", content: req.message } as never),
-      supabase.from("messages").insert({ conversation_id: conversationId, role: "assistant", content: "Hi there! 👋 Welcome! How can I help you today?" } as never),
-      supabase.from("chatbots").update({ message_count: (bot.message_count ?? 0) + 1 } as never).eq("id", req.chatbotId),
+      supabase.from("messages").insert({
+        conversation_id: conversationId,
+        role: "user",
+        content: req.message,
+      } as never),
+      supabase.from("messages").insert({
+        conversation_id: conversationId,
+        role: "assistant",
+        content: "Hi there! 👋 Welcome! How can I help you today?",
+      } as never),
+      supabase
+        .from("chatbots")
+        .update({ message_count: (bot.message_count ?? 0) + 1 } as never)
+        .eq("id", req.chatbotId),
     ]);
     const greeting = "Hi there! 👋 Welcome! How can I help you today?";
     onChunk?.(greeting);
@@ -97,11 +122,24 @@ export async function streamChat(
 
   if (thanksPattern.test(req.message)) {
     await Promise.all([
-      supabase.from("messages").insert({ conversation_id: conversationId, role: "user", content: req.message } as never),
-      supabase.from("messages").insert({ conversation_id: conversationId, role: "assistant", content: "You're welcome! 😊 Happy to help. Let me know if you need anything else!" } as never),
-      supabase.from("chatbots").update({ message_count: (bot.message_count ?? 0) + 1 } as never).eq("id", req.chatbotId),
+      supabase.from("messages").insert({
+        conversation_id: conversationId,
+        role: "user",
+        content: req.message,
+      } as never),
+      supabase.from("messages").insert({
+        conversation_id: conversationId,
+        role: "assistant",
+        content:
+          "You're welcome! 😊 Happy to help. Let me know if you need anything else!",
+      } as never),
+      supabase
+        .from("chatbots")
+        .update({ message_count: (bot.message_count ?? 0) + 1 } as never)
+        .eq("id", req.chatbotId),
     ]);
-    const thanks = "You're welcome! 😊 Happy to help. Let me know if you need anything else!";
+    const thanks =
+      "You're welcome! 😊 Happy to help. Let me know if you need anything else!";
     onChunk?.(thanks);
     return { conversationId: conversationId!, content: thanks };
   }
@@ -128,7 +166,10 @@ export async function streamChat(
     searchSimilarChunks(req.chatbotId, req.message),
   ]);
 
-  let context = chunks.map((c) => c.content).join("\n\n").slice(0, 2500);
+  let context = chunks
+    .map((c) => c.content)
+    .join("\n\n")
+    .slice(0, 2500);
 
   if (!context) {
     const { data: fallbackChunks, error: fallbackErr } = await supabase
@@ -138,7 +179,9 @@ export async function streamChat(
       .limit(5);
     if (!fallbackErr && fallbackChunks && fallbackChunks.length > 0) {
       context = (fallbackChunks as unknown as { content: string }[])
-        .map((c) => c.content).join("\n\n").slice(0, 2500);
+        .map((c) => c.content)
+        .join("\n\n")
+        .slice(0, 2500);
     }
   }
 
@@ -161,10 +204,15 @@ ${context || "No relevant context found."}
 
   const msgs = (history ?? []).map((m) => ({
     role: m.role as "user" | "assistant",
-    content: m.content.length > 500 ? m.content.slice(0, 500) + "..." : m.content,
+    content:
+      m.content.length > 500 ? m.content.slice(0, 500) + "..." : m.content,
   }));
 
-  await supabase.from("messages").insert({ conversation_id: conversationId, role: "user", content: req.message } as never);
+  await supabase.from("messages").insert({
+    conversation_id: conversationId,
+    role: "user",
+    content: req.message,
+  } as never);
 
   const startTime = Date.now();
 
@@ -177,7 +225,10 @@ ${context || "No relevant context found."}
     onChunk,
   );
 
-  responseCache.set(cacheKey, { content: fullContent, expiry: Date.now() + CACHE_TTL });
+  responseCache.set(cacheKey, {
+    content: fullContent,
+    expiry: Date.now() + CACHE_TTL,
+  });
 
   const responseTime = Date.now() - startTime;
 
@@ -195,7 +246,10 @@ ${context || "No relevant context found."}
         chunkContent: c.content.slice(0, 200),
       })),
     } as never),
-    supabase.from("chatbots").update({ message_count: newMsgCount + 1 } as never).eq("id", req.chatbotId),
+    supabase
+      .from("chatbots")
+      .update({ message_count: newMsgCount + 1 } as never)
+      .eq("id", req.chatbotId),
   ]);
 
   return {

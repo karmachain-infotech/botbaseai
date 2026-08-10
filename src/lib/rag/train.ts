@@ -1,7 +1,17 @@
 import type { Source } from "../../types/database";
 import { getAdminClient } from "../supabase/admin";
-import { extractFromFile, extractFromUrl, extractFromText, extractFromQa } from "./extractors";
-import { handleServerError, NotFoundError, DatabaseError, ValidationError } from "../errors";
+import {
+  extractFromFile,
+  extractFromUrl,
+  extractFromText,
+  extractFromQa,
+} from "./extractors";
+import {
+  handleServerError,
+  NotFoundError,
+  DatabaseError,
+  ValidationError,
+} from "../errors";
 
 export async function trainSource(sourceId: string): Promise<void> {
   try {
@@ -28,22 +38,31 @@ export async function trainSource(sourceId: string): Promise<void> {
       case "file":
         await handleFileSource(s);
         break;
-      case "qa":
+      case "qa": {
         let pairs: { question: string; answer: string }[];
         try {
-          pairs = JSON.parse(s.content) as { question: string; answer: string }[];
+          pairs = JSON.parse(s.content) as {
+            question: string;
+            answer: string;
+          }[];
         } catch {
           throw new ValidationError("QA content is not valid JSON");
         }
         await extractFromQa(s.chatbot_id, s.id, pairs);
         break;
+      }
     }
   } catch (error) {
     // Mark source as failed if training errors
     try {
       const supabase = getAdminClient();
-      await supabase.from("sources").update({ status: "failed" }).eq("id", sourceId);
-    } catch {}
+      await supabase
+        .from("sources")
+        .update({ status: "failed" })
+        .eq("id", sourceId);
+    } catch {
+      /* non-fatal: best-effort status update */
+    }
     throw handleServerError(error, "trainSource");
   }
 }
@@ -55,7 +74,8 @@ async function handleFileSource(source: Source): Promise<void> {
     .from("sources")
     .download(`${source.chatbot_id}/${source.id}/${source.name}`);
 
-  if (dlError) throw new DatabaseError(`File download failed: ${dlError.message}`);
+  if (dlError)
+    throw new DatabaseError(`File download failed: ${dlError.message}`);
   if (!fileData) throw new NotFoundError("File");
 
   const buffer = await fileData.arrayBuffer();
@@ -63,7 +83,15 @@ async function handleFileSource(source: Source): Promise<void> {
 
   let fileType = "text/plain";
   if (ext === "pdf") fileType = "application/pdf";
-  else if (ext === "docx") fileType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  else if (ext === "docx")
+    fileType =
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
-  await extractFromFile(source.chatbot_id, source.id, source.name, buffer, fileType);
+  await extractFromFile(
+    source.chatbot_id,
+    source.id,
+    source.name,
+    buffer,
+    fileType,
+  );
 }

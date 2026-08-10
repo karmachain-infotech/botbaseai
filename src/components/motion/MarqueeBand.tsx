@@ -8,7 +8,11 @@ interface MarqueeBandProps {
   baseSpeed?: number;
 }
 
-export function MarqueeBand({ children, className, baseSpeed = 20 }: MarqueeBandProps) {
+export function MarqueeBand({
+  children,
+  className,
+  baseSpeed = 20,
+}: MarqueeBandProps) {
   const prefersReduced = useReducedMotion();
   const scrollSpeed = useScrollSpeed();
   const speed = Math.min(baseSpeed + scrollSpeed * 50, 60);

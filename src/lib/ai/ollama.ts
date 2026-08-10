@@ -29,7 +29,10 @@ export class OllamaProvider implements AIProviderInterface {
       messages.push({ role: "system", content: params.systemInstruction });
     }
     for (const m of params.messages) {
-      messages.push({ role: m.role === "assistant" ? "assistant" : "user", content: m.content });
+      messages.push({
+        role: m.role === "assistant" ? "assistant" : "user",
+        content: m.content,
+      });
     }
 
     const response = await fetch(`${this.baseUrl}/api/chat`, {
@@ -46,7 +49,9 @@ export class OllamaProvider implements AIProviderInterface {
 
     if (!response.ok) {
       const text = await response.text().catch(() => "");
-      throw new Error(`Ollama API error: ${response.status} ${response.statusText}${text ? ` - ${text}` : ""}`);
+      throw new Error(
+        `Ollama API error: ${response.status} ${response.statusText}${text ? ` - ${text}` : ""}`,
+      );
     }
 
     const reader = response.body?.getReader();

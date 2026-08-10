@@ -2,13 +2,21 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { getAdminClient } from "../supabase/admin";
 import { createClient } from "../supabase/server";
-import { AuthError, DatabaseError, NotFoundError, handleServerError } from "../errors";
+import {
+  AuthError,
+  DatabaseError,
+  NotFoundError,
+  handleServerError,
+} from "../errors";
 
-export const listChatbots = createServerFn({ method: "GET" })
-  .handler(async () => {
+export const listChatbots = createServerFn({ method: "GET" }).handler(
+  async () => {
     try {
       const supabase = await createClient();
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
       if (authError || !user) throw new AuthError();
 
       const admin = getAdminClient();
@@ -23,14 +31,18 @@ export const listChatbots = createServerFn({ method: "GET" })
     } catch (error) {
       throw handleServerError(error, "listChatbots");
     }
-  });
+  },
+);
 
 export const getChatbot = createServerFn({ method: "GET" })
   .inputValidator(z.object({ id: z.string().uuid() }))
   .handler(async ({ data }) => {
     try {
       const supabase = await createClient();
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
       if (authError || !user) throw new AuthError();
 
       const admin = getAdminClient();
@@ -50,20 +62,23 @@ export const getChatbot = createServerFn({ method: "GET" })
   });
 
 export const createChatbot = createServerFn({ method: "POST" })
-    .inputValidator(
-      z.object({
-        name: z.string().min(1).max(100),
-        instructions: z.string().optional(),
-        model: z.string().optional(),
-        language: z.string().optional(),
-        status: z.enum(["draft", "live"]).optional(),
-        widget_config: z.record(z.unknown()).optional(),
-      }),
-    )
+  .inputValidator(
+    z.object({
+      name: z.string().min(1).max(100),
+      instructions: z.string().optional(),
+      model: z.string().optional(),
+      language: z.string().optional(),
+      status: z.enum(["draft", "live"]).optional(),
+      widget_config: z.record(z.unknown()).optional(),
+    }),
+  )
   .handler(async ({ data }) => {
     try {
       const supabase = await createClient();
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
       if (authError || !user) throw new AuthError();
 
       const admin = getAdminClient();
@@ -105,7 +120,10 @@ export const updateChatbot = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     try {
       const supabase = await createClient();
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
       if (authError || !user) throw new AuthError();
 
       const admin = getAdminClient();
@@ -130,7 +148,10 @@ export const deleteChatbot = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     try {
       const supabase = await createClient();
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
       if (authError || !user) throw new AuthError();
 
       const admin = getAdminClient();

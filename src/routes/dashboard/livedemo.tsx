@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { Bot, Code2, Loader2 } from "lucide-react";
 import { ChatWidget } from "@/components/chat/ChatWidget";
 import { getChatbot } from "@/lib/server-functions/chatbots";
+import { getAppUrl } from "@/lib/server-functions/config";
 import type { Chatbot } from "@/types/database";
 
 export const Route = createFileRoute("/dashboard/livedemo")({
@@ -16,11 +17,19 @@ function LiveDemo() {
   const [error, setError] = useState("");
   const [agent, setAgent] = useState<Chatbot | null>(null);
   const [agentLoading, setAgentLoading] = useState(false);
+  const [defaultBase, setDefaultBase] = useState("https://botbaseai.com");
 
   const mountedRef = useRef(true);
   useEffect(() => {
     mountedRef.current = true;
-    return () => { mountedRef.current = false; };
+    getAppUrl()
+      .then((url) => {
+        if (mountedRef.current) setDefaultBase(url);
+      })
+      .catch(() => {});
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
 
   function fetchAgent(id: string) {
@@ -31,7 +40,8 @@ function LiveDemo() {
         if (bot && mountedRef.current) setAgent(bot as unknown as Chatbot);
       })
       .catch(() => {
-        if (mountedRef.current) setError("Failed to load agent config. Using defaults.");
+        if (mountedRef.current)
+          setError("Failed to load agent config. Using defaults.");
       })
       .finally(() => {
         if (mountedRef.current) setAgentLoading(false);
@@ -47,7 +57,8 @@ function LiveDemo() {
 
     const botIdMatch = code.match(/data-bot-id=["']([^"']+)["']/);
     if (!botIdMatch) {
-      if (code.trim()) setError("Could not find data-bot-id in the embed code.");
+      if (code.trim())
+        setError("Could not find data-bot-id in the embed code.");
       return;
     }
 
@@ -62,8 +73,9 @@ function LiveDemo() {
   }
 
   const botName = agent?.name ?? "AI Assistant";
-  const primaryColor = ((agent?.widget_config as Record<string, unknown>)?.primaryColor as string) ?? "#6366f1";
-  const greeting = ((agent?.widget_config as Record<string, unknown>)?.greeting as string) ?? "Hi! How can I help you today?";
+  const primaryColor = agent?.widget_config?.primaryColor ?? "#6366f1";
+  const greeting =
+    agent?.widget_config?.greeting ?? "Hi! How can I help you today?";
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
@@ -84,7 +96,7 @@ function LiveDemo() {
         <textarea
           value={embedCode}
           onChange={(e) => handleCodeChange(e.target.value)}
-          placeholder={'<script src="https://botbaseai.com/widget.js" data-bot-id="..." data-base-url="..."></script>'}
+          placeholder={`<script src="${defaultBase}/widget.js" data-bot-id="..." data-base-url="..."></script>`}
           rows={3}
           className="mt-2 w-full resize-y rounded-lg border border-border bg-background p-3 text-xs font-mono outline-none focus:border-primary"
         />
@@ -102,11 +114,18 @@ function LiveDemo() {
               <span className="font-medium text-foreground">{botName}</span>
             </span>
             <span className="text-muted-foreground/50">ID:</span>
-            <code className="rounded bg-secondary px-1.5 py-0.5 font-mono text-xs">{botId}</code>
+            <code className="rounded bg-secondary px-1.5 py-0.5 font-mono text-xs">
+              {botId}
+            </code>
             <span className="text-muted-foreground/50">Color:</span>
             <span className="flex items-center gap-1">
-              <span className="h-3 w-3 rounded" style={{ background: primaryColor }} />
-              <code className="rounded bg-secondary px-1.5 py-0.5 font-mono text-xs">{primaryColor}</code>
+              <span
+                className="h-3 w-3 rounded"
+                style={{ background: primaryColor }}
+              />
+              <code className="rounded bg-secondary px-1.5 py-0.5 font-mono text-xs">
+                {primaryColor}
+              </code>
             </span>
             {agentLoading && <Loader2 className="h-3 w-3 animate-spin" />}
           </div>
@@ -116,9 +135,12 @@ function LiveDemo() {
           >
             <div className="flex min-h-[600px] flex-col items-center justify-center p-8">
               <div className="max-w-md rounded-xl border border-border bg-white p-8 text-center shadow-sm">
-                <h2 className="text-xl font-bold text-gray-900">Your Website</h2>
+                <h2 className="text-xl font-bold text-gray-900">
+                  Your Website
+                </h2>
                 <p className="mt-3 text-gray-600">
-                  This is a live preview. The chatbot widget appears in the bottom-right corner.
+                  This is a live preview. The chatbot widget appears in the
+                  bottom-right corner.
                 </p>
                 <div className="mt-6 grid gap-3 text-left">
                   {["Product A", "Product B", "Pricing"].map((item) => (
@@ -127,7 +149,9 @@ function LiveDemo() {
                       className="cursor-pointer rounded-lg border border-border bg-gray-50 p-3 text-sm transition-colors hover:bg-gray-100"
                     >
                       <p className="font-medium text-gray-900">{item}</p>
-                      <p className="text-gray-500">Learn more about {item.toLowerCase()}</p>
+                      <p className="text-gray-500">
+                        Learn more about {item.toLowerCase()}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -148,8 +172,8 @@ function LiveDemo() {
             Paste an embed script above to preview
           </p>
           <p className="max-w-md text-sm text-muted-foreground">
-            Copy the embed code from your agent's Widget page and paste it here to see the live
-            chatbot.
+            Copy the embed code from your agent's Widget page and paste it here
+            to see the live chatbot.
           </p>
         </div>
       )}

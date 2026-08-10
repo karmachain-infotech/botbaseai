@@ -1,13 +1,55 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import Stripe from "stripe";
 import { getAdminClient } from "../supabase/admin";
 import { createClient } from "../supabase/server";
 import { getStripeClient } from "../stripe";
-import { AuthError, DatabaseError, NotFoundError, ValidationError, handleServerError } from "../errors";
+import {
+  AuthError,
+  DatabaseError,
+  NotFoundError,
+  ValidationError,
+  handleServerError,
+} from "../errors";
+
+type StripeSubscriptionPeriod = Stripe.Subscription & {
+  current_period_start: number;
+  current_period_end: number;
+};
+
+interface AdminUserStripeSubscription {
+  id: string;
+  status: string;
+  currentPeriodStart: string;
+  currentPeriodEnd: string;
+  cancelAtPeriodEnd: boolean;
+  items: { price: string; amount: number; interval: string | null }[];
+}
+
+interface BillingSubscriptionRow {
+  id: string;
+  user_email: string;
+  status: string;
+  current_period_end: string;
+  cancel_at_period_end: boolean;
+  items: { amount: number; interval: string }[];
+}
+
+interface BillingTransactionRow {
+  id: string;
+  date: string;
+  user_email: string;
+  amount: number;
+  status: string;
+  plan: string;
+}
 
 async function requireAdmin() {
   const supabase = await createClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
   if (authError || !user) throw new AuthError();
 
   const admin = getAdminClient();
@@ -18,7 +60,8 @@ async function requireAdmin() {
     .single();
 
   if (dbError) throw new DatabaseError(dbError.message);
-  if (!dbUser?.is_admin) throw new AuthError("You do not have admin privileges");
+  if (!dbUser?.is_admin)
+    throw new AuthError("You do not have admin privileges");
 
   return { admin, adminId: user.id };
 }
@@ -46,17 +89,35 @@ async function logAdminAction(opts: {
   }
 }
 
-export const getAdminDashboard = createServerFn({ method: "GET" })
-  .handler(async () => {
+export const getAdminDashboard = createServerFn({ method: "GET" }).handler(
+  async () => {
     try {
       const { admin } = await requireAdmin();
 
       const now = new Date();
-      const firstOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-      const firstOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
-      const firstOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();
-      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
-      const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1).toISOString();
+      const firstOfThisMonth = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        1,
+      ).toISOString();
+      const firstOfLastMonth = new Date(
+        now.getFullYear(),
+        now.getMonth() - 1,
+        1,
+      ).toISOString();
+      const firstOfNextMonth = new Date(
+        now.getFullYear(),
+        now.getMonth() + 1,
+        1,
+      ).toISOString();
+      const thirtyDaysAgo = new Date(
+        now.getTime() - 30 * 24 * 60 * 60 * 1000,
+      ).toISOString();
+      const sixMonthsAgo = new Date(
+        now.getFullYear(),
+        now.getMonth() - 5,
+        1,
+      ).toISOString();
 
       // Total users
       const { count: totalUsers } = await admin
@@ -66,9 +127,12 @@ export const getAdminDashboard = createServerFn({ method: "GET" })
         .from("users")
         .select("*", { count: "exact", head: true })
         .lt("created_at", firstOfThisMonth);
-      const userGrowthPercent = (usersLastMonth ?? 1) > 0
-        ? Math.round(((totalUsers! - usersLastMonth!) / usersLastMonth!) * 100)
-        : 0;
+      const userGrowthPercent =
+        (usersLastMonth ?? 1) > 0
+          ? Math.round(
+              ((totalUsers! - usersLastMonth!) / usersLastMonth!) * 100,
+            )
+          : 0;
 
       // Total chatbots
       const { count: totalChatbots } = await admin
@@ -105,7 +169,9 @@ export const getAdminDashboard = createServerFn({ method: "GET" })
         const d = s.created_at.slice(0, 10);
         signupsByDate[d] = (signupsByDate[d] ?? 0) + 1;
       });
-      const userSignupsOverTime = Object.entries(signupsByDate).map(([date, count]) => ({ date, count }));
+      const userSignupsOverTime = Object.entries(signupsByDate).map(
+        ([date, count]) => ({ date, count }),
+      );
 
       // Messages per day (last 30 days)
       const { data: msgs } = await admin
@@ -119,7 +185,9 @@ export const getAdminDashboard = createServerFn({ method: "GET" })
         const d = m.created_at.slice(0, 10);
         msgsByDate[d] = (msgsByDate[d] ?? 0) + 1;
       });
-      const messagesPerDay = Object.entries(msgsByDate).map(([date, count]) => ({ date, count }));
+      const messagesPerDay = Object.entries(msgsByDate).map(
+        ([date, count]) => ({ date, count }),
+      );
 
       // Revenue from Stripe (last 6 months)
       let revenueOverTime: { date: string; amount: number }[] = [];
@@ -135,9 +203,11 @@ export const getAdminDashboard = createServerFn({ method: "GET" })
         const revenueByMonth: Record<string, number> = {};
         for (const inv of invoices.data) {
           const d = new Date(inv.created * 1000).toISOString().slice(0, 7);
-          revenueByMonth[d] = (revenueByMonth[d] ?? 0) + (inv.amount_paid / 100);
+          revenueByMonth[d] = (revenueByMonth[d] ?? 0) + inv.amount_paid / 100;
         }
-        revenueOverTime = Object.entries(revenueByMonth).map(([date, amount]) => ({ date, amount }));
+        revenueOverTime = Object.entries(revenueByMonth).map(
+          ([date, amount]) => ({ date, amount }),
+        );
 
         // MRR: sum of active subscriptions
         const activeSubs = await stripe.subscriptions.list({
@@ -147,7 +217,7 @@ export const getAdminDashboard = createServerFn({ method: "GET" })
         for (const sub of activeSubs.data) {
           for (const item of sub.items.data) {
             if (item.price.unit_amount) {
-              monthlyRevenue += (item.price.unit_amount / 100);
+              monthlyRevenue += item.price.unit_amount / 100;
             }
           }
         }
@@ -156,14 +226,14 @@ export const getAdminDashboard = createServerFn({ method: "GET" })
       }
 
       // Plan distribution
-      const { data: planData } = await admin
-        .from("users")
-        .select("plan");
+      const { data: planData } = await admin.from("users").select("plan");
       const planDist: Record<string, number> = {};
       (planData ?? []).forEach((u: { plan: string }) => {
         planDist[u.plan] = (planDist[u.plan] ?? 0) + 1;
       });
-      const planDistribution = Object.entries(planDist).map(([plan, count]) => ({ plan, count }));
+      const planDistribution = Object.entries(planDist).map(
+        ([plan, count]) => ({ plan, count }),
+      );
 
       // Recent signups (last 10)
       const { data: recentSignups } = await admin
@@ -179,15 +249,25 @@ export const getAdminDashboard = createServerFn({ method: "GET" })
         .order("created_at", { ascending: false })
         .limit(10);
 
-      let recentChatbots: { id: string; name: string; user_email: string; created_at: string }[] = [];
+      let recentChatbots: {
+        id: string;
+        name: string;
+        user_email: string;
+        created_at: string;
+      }[] = [];
       if (recentBots && recentBots.length > 0) {
-        const userIds = [...new Set(recentBots.map(b => b.user_id))];
+        const userIds = [...new Set(recentBots.map((b) => b.user_id))];
         const { data: botOwners } = await admin
           .from("users")
           .select("id, email")
           .in("id", userIds);
-        const ownerMap = new Map((botOwners ?? []).map((u: { id: string; email: string }) => [u.id, u.email]));
-        recentChatbots = recentBots.map(b => ({
+        const ownerMap = new Map(
+          (botOwners ?? []).map((u: { id: string; email: string }) => [
+            u.id,
+            u.email,
+          ]),
+        );
+        recentChatbots = recentBots.map((b) => ({
           id: b.id,
           name: b.name,
           user_email: ownerMap.get(b.user_id) || "unknown",
@@ -202,15 +282,32 @@ export const getAdminDashboard = createServerFn({ method: "GET" })
         .order("created_at", { ascending: false })
         .limit(10);
 
-      let recentSubscriptionChanges: { id: string; user_email: string; plan: string; action: string; created_at: string }[] = [];
+      let recentSubscriptionChanges: {
+        id: string;
+        user_email: string;
+        plan: string;
+        action: string;
+        created_at: string;
+      }[] = [];
       if (recentLogs && recentLogs.length > 0) {
-        const targetIds = [...new Set(recentLogs.filter(l => l.target_user_id).map(l => l.target_user_id))];
+        const targetIds = [
+          ...new Set(
+            recentLogs
+              .filter((l) => l.target_user_id)
+              .map((l) => l.target_user_id),
+          ),
+        ];
         const { data: logUsers } = await admin
           .from("users")
           .select("id, email")
           .in("id", targetIds);
-        const userMap = new Map((logUsers ?? []).map((u: { id: string; email: string }) => [u.id, u.email]));
-        recentSubscriptionChanges = recentLogs.map(l => ({
+        const userMap = new Map(
+          (logUsers ?? []).map((u: { id: string; email: string }) => [
+            u.id,
+            u.email,
+          ]),
+        );
+        recentSubscriptionChanges = recentLogs.map((l) => ({
           id: l.id,
           user_email: userMap.get(l.target_user_id || "") || "unknown",
           plan: (l.metadata as Record<string, string>)?.plan || "unknown",
@@ -238,7 +335,8 @@ export const getAdminDashboard = createServerFn({ method: "GET" })
     } catch (error) {
       throw handleServerError(error, "getAdminDashboard");
     }
-  });
+  },
+);
 
 export const adminListUsers = createServerFn({ method: "GET" })
   .inputValidator(
@@ -258,10 +356,15 @@ export const adminListUsers = createServerFn({ method: "GET" })
 
       let query = admin
         .from("users")
-        .select("id, email, name, avatar_url, plan, message_credits_used, message_credits_limit, stripe_customer_id, stripe_subscription_id, is_admin, created_at", { count: "exact" });
+        .select(
+          "id, email, name, avatar_url, plan, message_credits_used, message_credits_limit, stripe_customer_id, stripe_subscription_id, is_admin, created_at",
+          { count: "exact" },
+        );
 
       if (data.search) {
-        query = query.or(`email.ilike.%${data.search}%,name.ilike.%${data.search}%`);
+        query = query.or(
+          `email.ilike.%${data.search}%,name.ilike.%${data.search}%`,
+        );
       }
 
       if (data.plan && data.plan !== "all") {
@@ -280,7 +383,7 @@ export const adminListUsers = createServerFn({ method: "GET" })
       if (error) throw new DatabaseError(error.message);
 
       // Get chatbot counts for each user
-      const userIds = users.map(u => u.id);
+      const userIds = users.map((u) => u.id);
       const { data: chatbotCounts } = await admin
         .from("chatbots")
         .select("user_id")
@@ -288,16 +391,23 @@ export const adminListUsers = createServerFn({ method: "GET" })
 
       const chatbotCountMap = new Map<string, number>();
       (chatbotCounts ?? []).forEach((c: { user_id: string }) => {
-        chatbotCountMap.set(c.user_id, (chatbotCountMap.get(c.user_id) ?? 0) + 1);
+        chatbotCountMap.set(
+          c.user_id,
+          (chatbotCountMap.get(c.user_id) ?? 0) + 1,
+        );
       });
 
-      const usersWithCounts = users.map(u => ({
+      const usersWithCounts = users.map((u) => ({
         ...u,
         chatbots_count: chatbotCountMap.get(u.id) ?? 0,
       }));
 
       // Get messages count for this month per user
-      const firstOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+      const firstOfMonth = new Date(
+        new Date().getFullYear(),
+        new Date().getMonth(),
+        1,
+      ).toISOString();
       const { data: userMsgCounts } = await admin
         .from("messages")
         .select("conversation_id")
@@ -306,14 +416,29 @@ export const adminListUsers = createServerFn({ method: "GET" })
       const { data: userConvs } = await admin
         .from("conversations")
         .select("id, chatbot_id")
-        .in("chatbot_id", (await admin.from("chatbots").select("id").in("user_id", userIds)).data?.map(c => c.id) || []);
+        .in(
+          "chatbot_id",
+          (
+            await admin.from("chatbots").select("id").in("user_id", userIds)
+          ).data?.map((c) => c.id) || [],
+        );
 
-      const convToChatbot = new Map((userConvs ?? []).map((c: { id: string; chatbot_id: string }) => [c.id, c.chatbot_id]));
+      const convToChatbot = new Map(
+        (userConvs ?? []).map((c: { id: string; chatbot_id: string }) => [
+          c.id,
+          c.chatbot_id,
+        ]),
+      );
       const { data: chatbots } = await admin
         .from("chatbots")
         .select("id, user_id")
         .in("user_id", userIds);
-      const chatbotToUser = new Map((chatbots ?? []).map((c: { id: string; user_id: string }) => [c.id, c.user_id]));
+      const chatbotToUser = new Map(
+        (chatbots ?? []).map((c: { id: string; user_id: string }) => [
+          c.id,
+          c.user_id,
+        ]),
+      );
 
       const userMsgCount: Record<string, number> = {};
       (userMsgCounts ?? []).forEach((m: { conversation_id: string }) => {
@@ -327,7 +452,7 @@ export const adminListUsers = createServerFn({ method: "GET" })
         }
       });
 
-      const finalUsers = usersWithCounts.map(u => ({
+      const finalUsers = usersWithCounts.map((u) => ({
         ...u,
         messages_this_month: userMsgCount[u.id] ?? 0,
       }));
@@ -367,33 +492,48 @@ export const adminGetUser = createServerFn({ method: "GET" })
         .order("created_at", { ascending: false });
 
       // Get subscription info from Stripe
-      let stripeSubscription: Record<string, unknown> | null = null;
+      let stripeSubscription: AdminUserStripeSubscription | null = null;
       if (user.stripe_subscription_id) {
         try {
           const stripe = getStripeClient();
-          const sub = await stripe.subscriptions.retrieve(user.stripe_subscription_id);
+          const sub = (await stripe.subscriptions.retrieve(
+            user.stripe_subscription_id,
+          )) as unknown as StripeSubscriptionPeriod;
           stripeSubscription = {
             id: sub.id,
             status: sub.status,
-            currentPeriodStart: new Date(sub.current_period_start * 1000).toISOString(),
-            currentPeriodEnd: new Date(sub.current_period_end * 1000).toISOString(),
+            currentPeriodStart: new Date(
+              sub.current_period_start * 1000,
+            ).toISOString(),
+            currentPeriodEnd: new Date(
+              sub.current_period_end * 1000,
+            ).toISOString(),
             cancelAtPeriodEnd: sub.cancel_at_period_end,
-            items: sub.items.data.map(item => ({
+            items: sub.items.data.map((item) => ({
               price: item.price.id,
               amount: (item.price.unit_amount ?? 0) / 100,
-              interval: item.price.recurring?.interval,
+              interval: item.price.recurring?.interval ?? null,
             })),
           };
-        } catch { /* Stripe unavailable */ }
+        } catch {
+          /* Stripe unavailable */
+        }
       }
 
       // Get message usage this month
-      const firstOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+      const firstOfMonth = new Date(
+        new Date().getFullYear(),
+        new Date().getMonth(),
+        1,
+      ).toISOString();
       const { data: userConvs } = await admin
         .from("conversations")
         .select("id")
-        .in("chatbot_id", (chatbots ?? []).map(c => c.id));
-      const convIds = (userConvs ?? []).map(c => c.id);
+        .in(
+          "chatbot_id",
+          (chatbots ?? []).map((c) => c.id),
+        );
+      const convIds = (userConvs ?? []).map((c) => c.id);
 
       let messagesThisMonth = 0;
       if (convIds.length > 0) {
@@ -442,14 +582,19 @@ export const adminUpdateUser = createServerFn({ method: "POST" })
 
       const updates: Record<string, unknown> = {};
       if (data.plan !== undefined) updates.plan = data.plan;
-      if (data.message_credits_limit !== undefined) updates.message_credits_limit = data.message_credits_limit;
-      if (data.message_credits_used !== undefined) updates.message_credits_used = data.message_credits_used;
+      if (data.message_credits_limit !== undefined)
+        updates.message_credits_limit = data.message_credits_limit;
+      if (data.message_credits_used !== undefined)
+        updates.message_credits_used = data.message_credits_used;
       if (data.is_admin !== undefined) updates.is_admin = data.is_admin;
       if (data.name !== undefined) updates.name = data.name;
 
       if (Object.keys(updates).length === 0) return { updated: false };
 
-      const { error } = await admin.from("users").update(updates).eq("id", data.userId);
+      const { error } = await admin
+        .from("users")
+        .update(updates)
+        .eq("id", data.userId);
       if (error) throw new DatabaseError(error.message);
 
       await logAdminAction({
@@ -484,13 +629,18 @@ export const adminDeleteUser = createServerFn({ method: "POST" })
       if (dbUser.stripe_customer_id) {
         try {
           const stripe = getStripeClient();
-          const subs = await stripe.subscriptions.list({ customer: dbUser.stripe_customer_id, limit: 1 });
+          const subs = await stripe.subscriptions.list({
+            customer: dbUser.stripe_customer_id,
+            limit: 1,
+          });
           for (const sub of subs.data) {
             if (["active", "trialing", "past_due"].includes(sub.status)) {
               await stripe.subscriptions.cancel(sub.id);
             }
           }
-        } catch { /* best effort */ }
+        } catch {
+          /* best effort */
+        }
       }
 
       // Delete user data
@@ -499,11 +649,20 @@ export const adminDeleteUser = createServerFn({ method: "POST" })
         .select("id")
         .eq("user_id", data.userId);
 
-      const botIds = (chatbots ?? []).map(c => c.id);
+      const botIds = (chatbots ?? []).map((c) => c.id);
       if (botIds.length > 0) {
-        await admin.from("messages").delete().in("conversation_id",
-          (await admin.from("conversations").select("id").in("chatbot_id", botIds)).data?.map(c => c.id) || []
-        );
+        await admin
+          .from("messages")
+          .delete()
+          .in(
+            "conversation_id",
+            (
+              await admin
+                .from("conversations")
+                .select("id")
+                .in("chatbot_id", botIds)
+            ).data?.map((c) => c.id) || [],
+          );
         await admin.from("conversations").delete().in("chatbot_id", botIds);
         await admin.from("embeddings").delete().in("chatbot_id", botIds);
         await admin.from("sources").delete().in("chatbot_id", botIds);
@@ -515,7 +674,9 @@ export const adminDeleteUser = createServerFn({ method: "POST" })
 
       try {
         await admin.auth.admin.deleteUser(data.userId);
-      } catch { /* best effort */ }
+      } catch {
+        /* best effort */
+      }
 
       await logAdminAction({
         adminId,
@@ -547,7 +708,10 @@ export const adminListAllChatbots = createServerFn({ method: "GET" })
 
       let query = admin
         .from("chatbots")
-        .select("id, user_id, name, status, message_count, model, created_at, updated_at", { count: "exact" });
+        .select(
+          "id, user_id, name, status, message_count, model, created_at, updated_at",
+          { count: "exact" },
+        );
 
       if (data.search) {
         query = query.or(`name.ilike.%${data.search}%`);
@@ -569,15 +733,20 @@ export const adminListAllChatbots = createServerFn({ method: "GET" })
       if (error) throw new DatabaseError(error.message);
 
       // Get owner emails
-      const userIds = [...new Set(chatbots.map(c => c.user_id))];
+      const userIds = [...new Set(chatbots.map((c) => c.user_id))];
       const { data: owners } = await admin
         .from("users")
         .select("id, email, name")
         .in("id", userIds);
 
-      const ownerMap = new Map((owners ?? []).map((u: { id: string; email: string; name: string }) => [u.id, { email: u.email, name: u.name }]));
+      const ownerMap = new Map(
+        (owners ?? []).map((u: { id: string; email: string; name: string }) => [
+          u.id,
+          { email: u.email, name: u.name },
+        ]),
+      );
 
-      const chatbotsWithOwners = chatbots.map(c => ({
+      const chatbotsWithOwners = chatbots.map((c) => ({
         ...c,
         owner_email: ownerMap.get(c.user_id)?.email || "unknown",
         owner_name: ownerMap.get(c.user_id)?.name || "unknown",
@@ -613,7 +782,7 @@ export const adminGetChatbot = createServerFn({ method: "GET" })
       // Get owner
       const { data: owner } = await admin
         .from("users")
-        .select("id, email, name")
+        .select("id, email, name, plan, is_admin, created_at")
         .eq("id", chatbot.user_id)
         .single();
 
@@ -631,7 +800,14 @@ export const adminGetChatbot = createServerFn({ method: "GET" })
 
       return {
         chatbot,
-        owner: owner || { id: "", email: "unknown", name: "Unknown" },
+        owner: owner || {
+          id: "",
+          email: "unknown",
+          name: "Unknown",
+          plan: "free",
+          is_admin: false,
+          created_at: "",
+        },
         sources: sources ?? [],
         totalConversations: totalConversations ?? 0,
       };
@@ -655,10 +831,22 @@ export const adminDeleteChatbot = createServerFn({ method: "POST" })
       if (!chatbot) throw new NotFoundError("Chatbot");
 
       // Cascade delete
-      await admin.from("messages").delete().in("conversation_id",
-        (await admin.from("conversations").select("id").eq("chatbot_id", data.chatbotId)).data?.map(c => c.id) || []
-      );
-      await admin.from("conversations").delete().eq("chatbot_id", data.chatbotId);
+      await admin
+        .from("messages")
+        .delete()
+        .in(
+          "conversation_id",
+          (
+            await admin
+              .from("conversations")
+              .select("id")
+              .eq("chatbot_id", data.chatbotId)
+          ).data?.map((c) => c.id) || [],
+        );
+      await admin
+        .from("conversations")
+        .delete()
+        .eq("chatbot_id", data.chatbotId);
       await admin.from("embeddings").delete().eq("chatbot_id", data.chatbotId);
       await admin.from("sources").delete().eq("chatbot_id", data.chatbotId);
       await admin.from("ai_actions").delete().eq("chatbot_id", data.chatbotId);
@@ -679,8 +867,8 @@ export const adminDeleteChatbot = createServerFn({ method: "POST" })
     }
   });
 
-export const adminGetBillingStats = createServerFn({ method: "GET" })
-  .handler(async () => {
+export const adminGetBillingStats = createServerFn({ method: "GET" }).handler(
+  async () => {
     try {
       const { admin } = await requireAdmin();
 
@@ -695,15 +883,18 @@ export const adminGetBillingStats = createServerFn({ method: "GET" })
       // MRR
       let mrr = 0;
       let totalRevenue = 0;
-      let subscriptionsData: Record<string, unknown>[] = [];
-      let transactionsData: Record<string, unknown>[] = [];
+      const subscriptionsData: BillingSubscriptionRow[] = [];
+      const transactionsData: BillingTransactionRow[] = [];
 
       try {
-        const activeSubs = await stripe.subscriptions.list({ status: "active", limit: 100 });
+        const activeSubs = await stripe.subscriptions.list({
+          status: "active",
+          limit: 100,
+        });
         for (const sub of activeSubs.data) {
           for (const item of sub.items.data) {
             if (item.price.unit_amount) {
-              mrr += (item.price.unit_amount / 100);
+              mrr += item.price.unit_amount / 100;
             }
           }
         }
@@ -714,36 +905,50 @@ export const adminGetBillingStats = createServerFn({ method: "GET" })
           limit: 100,
         });
         for (const inv of allInvoices.data) {
-          totalRevenue += (inv.amount_paid / 100);
+          totalRevenue += inv.amount_paid / 100;
         }
 
         // Subscriptions list
-        for (const sub of activeSubs.data) {
-          const customer = await stripe.customers.retrieve(sub.customer).catch(() => null);
-          const customerEmail = customer && !customer.deleted ? (customer as { email?: string }).email || "unknown" : "unknown";
+        for (const sub of activeSubs.data as StripeSubscriptionPeriod[]) {
+          const customerId =
+            typeof sub.customer === "string" ? sub.customer : sub.customer.id;
+          const customer = await stripe.customers
+            .retrieve(customerId)
+            .catch(() => null);
+          const customerEmail =
+            customer && !customer.deleted
+              ? (customer as { email?: string }).email || "unknown"
+              : "unknown";
           subscriptionsData.push({
             id: sub.id,
             user_email: customerEmail,
             status: sub.status,
-            current_period_end: sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null,
+            current_period_end: sub.current_period_end
+              ? new Date(sub.current_period_end * 1000).toISOString()
+              : "",
             cancel_at_period_end: sub.cancel_at_period_end,
-            items: sub.items.data.map(item => ({
+            items: sub.items.data.map((item) => ({
               amount: (item.price.unit_amount ?? 0) / 100,
-              interval: item.price.recurring?.interval,
+              interval: item.price.recurring?.interval ?? "month",
             })),
           });
         }
 
         // Recent transactions
         for (const inv of allInvoices.data.slice(0, 50)) {
-          const customer = await stripe.customers.retrieve(inv.customer as string).catch(() => null);
-          const customerEmail = customer && !customer.deleted ? (customer as { email?: string }).email || "unknown" : "unknown";
+          const customer = await stripe.customers
+            .retrieve(inv.customer as string)
+            .catch(() => null);
+          const customerEmail =
+            customer && !customer.deleted
+              ? (customer as { email?: string }).email || "unknown"
+              : "unknown";
           transactionsData.push({
             id: inv.id,
-            date: inv.created ? new Date(inv.created * 1000).toISOString() : null,
+            date: inv.created ? new Date(inv.created * 1000).toISOString() : "",
             user_email: customerEmail,
             amount: inv.amount_paid / 100,
-            status: inv.status,
+            status: inv.status ?? "paid",
             plan: "subscription",
           });
         }
@@ -752,7 +957,8 @@ export const adminGetBillingStats = createServerFn({ method: "GET" })
       }
 
       const arr = mrr * 12;
-      const arpu = paidUsers.length > 0 ? mrr / paidUsers.length : 0;
+      const arpu =
+        (paidUsers ?? []).length > 0 ? mrr / (paidUsers ?? []).length : 0;
       const churnRate = 0; // Would need historical tracking
 
       return {
@@ -761,14 +967,15 @@ export const adminGetBillingStats = createServerFn({ method: "GET" })
         totalRevenue,
         arpu,
         churnRate,
-        totalSubscriptions: paidUsers.length,
+        totalSubscriptions: (paidUsers ?? []).length,
         subscriptions: subscriptionsData,
         transactions: transactionsData,
       };
     } catch (error) {
       throw handleServerError(error, "adminGetBillingStats");
     }
-  });
+  },
+);
 
 export const adminGetAnalytics = createServerFn({ method: "GET" })
   .inputValidator(
@@ -781,7 +988,9 @@ export const adminGetAnalytics = createServerFn({ method: "GET" })
       const { admin } = await requireAdmin();
 
       const days = data.period === "7d" ? 7 : data.period === "90d" ? 90 : 30;
-      const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+      const startDate = new Date(
+        Date.now() - days * 24 * 60 * 60 * 1000,
+      ).toISOString();
 
       // DAU (daily active users = distinct session_ids per day)
       const { data: conversations } = await admin
@@ -790,12 +999,17 @@ export const adminGetAnalytics = createServerFn({ method: "GET" })
         .gte("created_at", startDate);
 
       const dauMap: Record<string, Set<string>> = {};
-      (conversations ?? []).forEach((c: { session_id: string; created_at: string }) => {
-        const d = c.created_at.slice(0, 10);
-        if (!dauMap[d]) dauMap[d] = new Set();
-        dauMap[d].add(c.session_id);
-      });
-      const dau = Object.entries(dauMap).map(([date, sessions]) => ({ date, count: sessions.size }));
+      (conversations ?? []).forEach(
+        (c: { session_id: string; created_at: string }) => {
+          const d = c.created_at.slice(0, 10);
+          if (!dauMap[d]) dauMap[d] = new Set();
+          dauMap[d].add(c.session_id);
+        },
+      );
+      const dau = Object.entries(dauMap).map(([date, sessions]) => ({
+        date,
+        count: sessions.size,
+      }));
 
       // Top chatbots by message count
       const { data: topBots } = await admin
@@ -811,9 +1025,12 @@ export const adminGetAnalytics = createServerFn({ method: "GET" })
         .order("message_count", { ascending: false });
 
       const userMsgTotal: Record<string, number> = {};
-      (topChatbots ?? []).forEach((c: { user_id: string; message_count: number }) => {
-        userMsgTotal[c.user_id] = (userMsgTotal[c.user_id] ?? 0) + (c.message_count ?? 0);
-      });
+      (topChatbots ?? []).forEach(
+        (c: { user_id: string; message_count: number }) => {
+          userMsgTotal[c.user_id] =
+            (userMsgTotal[c.user_id] ?? 0) + (c.message_count ?? 0);
+        },
+      );
 
       const topUserIds = Object.entries(userMsgTotal)
         .sort(([, a], [, b]) => b - a)
@@ -825,22 +1042,33 @@ export const adminGetAnalytics = createServerFn({ method: "GET" })
         .select("id, email, name")
         .in("id", topUserIds);
 
-      const topUsersByUsage = (topUsers ?? []).map(u => ({
-        ...u,
-        total_messages: userMsgTotal[u.id] ?? 0,
-      })).sort((a, b) => b.total_messages - a.total_messages);
+      const topUsersByUsage = (topUsers ?? [])
+        .map((u) => ({
+          ...u,
+          total_messages: userMsgTotal[u.id] ?? 0,
+        }))
+        .sort((a, b) => b.total_messages - a.total_messages);
 
       // Response time stats
       const { data: recentMessages } = await admin
         .from("messages")
         .select("response_time_ms, created_at")
         .eq("role", "assistant")
-        .gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+        .gte(
+          "created_at",
+          new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+        )
         .limit(1000);
 
-      const avgResponseTime = (recentMessages ?? []).length > 0
-        ? Math.round((recentMessages as { response_time_ms: number }[]).reduce((s, m) => s + (m.response_time_ms ?? 0), 0) / (recentMessages ?? []).length)
-        : 0;
+      const avgResponseTime =
+        (recentMessages ?? []).length > 0
+          ? Math.round(
+              (recentMessages as { response_time_ms: number }[]).reduce(
+                (s, m) => s + (m.response_time_ms ?? 0),
+                0,
+              ) / (recentMessages ?? []).length,
+            )
+          : 0;
 
       return {
         dau,
@@ -854,8 +1082,8 @@ export const adminGetAnalytics = createServerFn({ method: "GET" })
     }
   });
 
-export const adminGetSettings = createServerFn({ method: "GET" })
-  .handler(async () => {
+export const adminGetSettings = createServerFn({ method: "GET" }).handler(
+  async () => {
     try {
       const { admin } = await requireAdmin();
 
@@ -870,11 +1098,13 @@ export const adminGetSettings = createServerFn({ method: "GET" })
         settingsMap[s.key] = s.value;
       });
 
-      return settingsMap;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return settingsMap as Record<string, any>;
     } catch (error) {
       throw handleServerError(error, "adminGetSettings");
     }
-  });
+  },
+);
 
 export const adminUpdateSetting = createServerFn({ method: "POST" })
   .inputValidator(
@@ -887,14 +1117,12 @@ export const adminUpdateSetting = createServerFn({ method: "POST" })
     try {
       const { admin, adminId } = await requireAdmin();
 
-      const { error } = await admin
-        .from("platform_settings")
-        .upsert({
-          key: data.key,
-          value: data.value,
-          updated_at: new Date().toISOString(),
-          updated_by: adminId,
-        });
+      const { error } = await admin.from("platform_settings").upsert({
+        key: data.key,
+        value: data.value,
+        updated_at: new Date().toISOString(),
+        updated_by: adminId,
+      });
 
       if (error) throw new DatabaseError(error.message);
 
@@ -912,11 +1140,14 @@ export const adminUpdateSetting = createServerFn({ method: "POST" })
     }
   });
 
-export const checkIsAdmin = createServerFn({ method: "GET" })
-  .handler(async () => {
+export const checkIsAdmin = createServerFn({ method: "GET" }).handler(
+  async () => {
     try {
       const supabase = await createClient();
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
       if (authError || !user) return { isAdmin: false };
 
       const admin = getAdminClient();
@@ -926,10 +1157,11 @@ export const checkIsAdmin = createServerFn({ method: "GET" })
         .eq("id", user.id)
         .single();
 
-      return { isAdmin: (data as { is_admin?: boolean } | null)?.is_admin ?? false };
+      return {
+        isAdmin: (data as { is_admin?: boolean } | null)?.is_admin ?? false,
+      };
     } catch {
       return { isAdmin: false };
     }
-  });
-
-
+  },
+);

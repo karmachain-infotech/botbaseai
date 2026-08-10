@@ -1,7 +1,14 @@
 import { getAdminClient } from "../supabase/admin";
 import { chunkText } from "./chunker";
 import { createEmbeddings } from "./embeddings";
-import { handleServerError, DatabaseError, ExternalServiceError, ValidationError } from "../errors";
+import {
+  handleServerError,
+  DatabaseError,
+  ExternalServiceError,
+  ValidationError,
+} from "../errors";
+import type { CheerioAPI } from "cheerio";
+import type { AnyNode } from "domhandler";
 
 export async function extractFromFile(
   chatbotId: string,
@@ -18,10 +25,13 @@ export async function extractFromFile(
       const pdfData = await pdfParse.default(Buffer.from(buffer));
       content = pdfData.text;
     } else if (
-      fileType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      fileType ===
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     ) {
       const mammoth = await import("mammoth");
-      const result = await mammoth.extractRawText({ buffer: Buffer.from(buffer) });
+      const result = await mammoth.extractRawText({
+        buffer: Buffer.from(buffer),
+      });
       content = result.value;
     } else {
       content = new TextDecoder().decode(buffer);
@@ -46,20 +56,38 @@ function normalizeUrl(urlStr: string): string {
 }
 
 const COMMON_PATHS = [
-  "/about", "/about-us", "/about-us/",
-  "/contact", "/contact-us", "/contact-us/",
-  "/services", "/services/",
-  "/team", "/our-team", "/team/",
-  "/portfolio", "/work", "/portfolio/",
-  "/projects", "/projects/",
-  "/products", "/products/",
-  "/pricing", "/pricing/",
-  "/faq", "/faq/",
-  "/blog", "/blog/",
-  "/careers", "/careers/",
-  "/testimonials", "/testimonials/",
-  "/features", "/features/",
-  "/solutions", "/solutions/",
+  "/about",
+  "/about-us",
+  "/about-us/",
+  "/contact",
+  "/contact-us",
+  "/contact-us/",
+  "/services",
+  "/services/",
+  "/team",
+  "/our-team",
+  "/team/",
+  "/portfolio",
+  "/work",
+  "/portfolio/",
+  "/projects",
+  "/projects/",
+  "/products",
+  "/products/",
+  "/pricing",
+  "/pricing/",
+  "/faq",
+  "/faq/",
+  "/blog",
+  "/blog/",
+  "/careers",
+  "/careers/",
+  "/testimonials",
+  "/testimonials/",
+  "/features",
+  "/features/",
+  "/solutions",
+  "/solutions/",
 ];
 
 export async function extractFromUrl(
@@ -79,7 +107,9 @@ export async function extractFromUrl(
 
     toVisit.add(normalizeUrl(url));
 
-    async function tryFetch(pageUrl: string): Promise<{ html: string; $: cheerio.CheerioAPI } | null> {
+    async function tryFetch(
+      pageUrl: string,
+    ): Promise<{ html: string; $: CheerioAPI } | null> {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 10000);
       try {
@@ -102,7 +132,7 @@ export async function extractFromUrl(
       const sitemapResult = await tryFetch(`${baseOrigin}/sitemap.xml`);
       if (sitemapResult) {
         const urls: string[] = [];
-        sitemapResult.$("url loc").each((_: number, el: cheerio.AnyNode) => {
+        sitemapResult.$("url loc").each((_: number, el: AnyNode) => {
           const loc = sitemapResult.$(el).text().trim();
           if (loc) urls.push(normalizeUrl(loc));
         });
@@ -112,7 +142,9 @@ export async function extractFromUrl(
           }
         }
       }
-    } catch {}
+    } catch {
+      /* non-fatal: skip sitemap */
+    }
 
     // Add common paths as fallback
     for (const path of COMMON_PATHS) {
@@ -122,7 +154,7 @@ export async function extractFromUrl(
     }
 
     while (toVisit.size > 0 && visited.size < maxPages) {
-      const currentUrl = normalizeUrl(toVisit.values().next().value);
+      const currentUrl = normalizeUrl(toVisit.values().next().value!);
       toVisit.delete(currentUrl);
       if (visited.has(currentUrl)) continue;
       visited.add(currentUrl);
@@ -142,9 +174,14 @@ export async function extractFromUrl(
       let content = $("body").text().replace(/\s+/g, " ").trim();
 
       if (!content || content.length < 50) {
-        const metaDesc = $("meta[name=description]").attr("content") || $("meta[property='og:description']").attr("content") || "";
+        const metaDesc =
+          $("meta[name=description]").attr("content") ||
+          $("meta[property='og:description']").attr("content") ||
+          "";
         const keywords = $("meta[name=keywords]").attr("content") || "";
-        const fallback = [title, metaDesc, keywords].filter(Boolean).join(" - ");
+        const fallback = [title, metaDesc, keywords]
+          .filter(Boolean)
+          .join(" - ");
         if (fallback && (!content || content.length < fallback.length)) {
           content = fallback;
         }
@@ -158,38 +195,55 @@ export async function extractFromUrl(
       if (visited.size < maxPages) {
         const links: string[] = [];
 
-        function addNormalizedLink(href: string) {
+        function addNormalizedLink(href: string | undefined) {
           if (!href) return;
-          if (href.startsWith("javascript:") || href.startsWith("#") || href.startsWith("mailto:") || href.startsWith("tel:")) return;
+          if (
+            href.startsWith("javascript:") ||
+            href.startsWith("#") ||
+            href.startsWith("mailto:") ||
+            href.startsWith("tel:")
+          )
+            return;
           try {
             const resolved = new URL(href, currentUrl);
             const normalized = normalizeUrl(resolved.href);
             if (
-              (resolved.origin === baseOrigin || resolved.hostname.replace(/^www\./, "") === baseUrl.hostname.replace(/^www\./, "")) &&
+              (resolved.origin === baseOrigin ||
+                resolved.hostname.replace(/^www\./, "") ===
+                  baseUrl.hostname.replace(/^www\./, "")) &&
               resolved.protocol.startsWith("http") &&
               !visited.has(normalized) &&
               !toVisit.has(normalized) &&
-              !normalized.match(/\.(pdf|zip|png|jpg|jpeg|gif|svg|mp4|mp3|avi|doc|docx|xls|xlsx)$/i) &&
+              !normalized.match(
+                /\.(pdf|zip|png|jpg|jpeg|gif|svg|mp4|mp3|avi|doc|docx|xls|xlsx)$/i,
+              ) &&
               !normalized.includes("#")
             ) {
               links.push(normalized);
             }
-          } catch {}
+          } catch {
+            /* non-fatal: skip malformed link */
+          }
         }
 
         // Extract from <a> tags
-        $("a").each((_: number, el: cheerio.AnyNode) => {
+        $("a").each((_: number, el: AnyNode) => {
           addNormalizedLink($(el).attr("href"));
         });
 
         // Extract from buttons: data-href, data-url, data-link attributes
-        $("button, [role=button]").each((_: number, el: cheerio.AnyNode) => {
-          const dataHref = $(el).attr("data-href") || $(el).attr("data-url") || $(el).attr("data-link");
+        $("button, [role=button]").each((_: number, el: AnyNode) => {
+          const dataHref =
+            $(el).attr("data-href") ||
+            $(el).attr("data-url") ||
+            $(el).attr("data-link");
           addNormalizedLink(dataHref);
           // Parse onclick for location navigation
           const onclick = $(el).attr("onclick");
           if (onclick) {
-            const match = onclick.match(/(?:window\.)?location(?:\.href)?\s*=\s*['"]([^'"]+)['"]/);
+            const match = onclick.match(
+              /(?:window\.)?location(?:\.href)?\s*=\s*['"]([^'"]+)['"]/,
+            );
             if (match) addNormalizedLink(match[1]);
           }
         });
@@ -202,7 +256,7 @@ export async function extractFromUrl(
 
     if (pageContents.length === 0) {
       throw new ValidationError(
-        `No content could be extracted from: ${url}. This usually happens with JavaScript-rendered sites (React, Vue, etc.). Try adding the site content manually using the "Text" source type instead.`
+        `No content could be extracted from: ${url}. This usually happens with JavaScript-rendered sites (React, Vue, etc.). Try adding the site content manually using the "Text" source type instead.`,
       );
     }
 
@@ -247,7 +301,9 @@ export async function extractFromQa(
     if (pairs.length === 0) {
       throw new ValidationError("QA content must have at least one Q&A pair");
     }
-    const content = pairs.map((p) => `Q: ${p.question}\nA: ${p.answer}`).join("\n\n");
+    const content = pairs
+      .map((p) => `Q: ${p.question}\nA: ${p.answer}`)
+      .join("\n\n");
     await processContent(chatbotId, sourceId, content, { source: "qa" });
   } catch (error) {
     throw handleServerError(error, "extractFromQa");
@@ -289,9 +345,14 @@ async function processContent(
 
   for (let i = 0; i < rows.length; i += 20) {
     const batch = rows.slice(i, i + 20);
-    const { error: insertErr } = await supabase.from("embeddings").insert(batch);
+    const { error: insertErr } = await supabase
+      .from("embeddings")
+      .insert(batch);
     if (insertErr) {
-      console.error(`[processContent] Batch insert failed at index ${i}:`, insertErr.message);
+      console.error(
+        `[processContent] Batch insert failed at index ${i}:`,
+        insertErr.message,
+      );
       throw new DatabaseError(insertErr.message);
     }
   }
@@ -302,6 +363,9 @@ async function processContent(
     .eq("id", sourceId);
 
   if (trainedErr) {
-    console.error("[processContent] Failed to mark source as trained:", trainedErr.message);
+    console.error(
+      "[processContent] Failed to mark source as trained:",
+      trainedErr.message,
+    );
   }
 }

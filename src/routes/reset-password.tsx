@@ -9,7 +9,10 @@ export const Route = createFileRoute("/reset-password")({
   head: () => ({
     meta: [
       { title: "Reset password — BotbaseAI" },
-      { name: "description", content: "Set a new password for your BotbaseAI account." },
+      {
+        name: "description",
+        content: "Set a new password for your BotbaseAI account.",
+      },
     ],
   }),
   component: ResetPassword,
@@ -25,7 +28,11 @@ function ResetPassword() {
 
   useEffect(() => {
     const hash = window.location.hash;
-    if (hash && hash.includes("type=recovery") && hash.includes("access_token=")) {
+    if (
+      hash &&
+      hash.includes("type=recovery") &&
+      hash.includes("access_token=")
+    ) {
       setReady(true);
     } else {
       setError("Invalid or expired reset link. Please request a new one.");
@@ -53,7 +60,9 @@ function ResetPassword() {
         if (sessionError) throw new Error(sessionError.message);
       }
 
-      const { error: updateError } = await supabase.auth.updateUser({ password });
+      const { error: updateError } = await supabase.auth.updateUser({
+        password,
+      });
       if (updateError) throw new Error(updateError.message);
 
       setSuccess(true);
@@ -75,11 +84,26 @@ function ResetPassword() {
             <TriangleAlert className="mx-auto h-12 w-12 text-primary" />
             <h2 className="mt-4 text-xl font-bold">Supabase not configured</h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Set <code className="rounded bg-secondary px-1.5 py-0.5 text-xs">VITE_SUPABASE_URL</code> and{" "}
-              <code className="rounded bg-secondary px-1.5 py-0.5 text-xs">VITE_SUPABASE_ANON_KEY</code> in{" "}
-              <code className="rounded bg-secondary px-1.5 py-0.5 text-xs">.env.local</code> to enable authentication.
+              Set{" "}
+              <code className="rounded bg-secondary px-1.5 py-0.5 text-xs">
+                VITE_SUPABASE_URL
+              </code>{" "}
+              and{" "}
+              <code className="rounded bg-secondary px-1.5 py-0.5 text-xs">
+                VITE_SUPABASE_ANON_KEY
+              </code>{" "}
+              in{" "}
+              <code className="rounded bg-secondary px-1.5 py-0.5 text-xs">
+                .env.local
+              </code>{" "}
+              to enable authentication.
             </p>
-            <Link to="/" className="mt-6 inline-block text-sm text-primary hover:underline">← Back to home</Link>
+            <Link
+              to="/"
+              className="mt-6 inline-block text-sm text-primary hover:underline"
+            >
+              ← Back to home
+            </Link>
           </div>
         </div>
         <Footer />
@@ -95,8 +119,12 @@ function ResetPassword() {
           {success ? (
             <div className="text-center">
               <CheckCircle className="mx-auto h-12 w-12 text-primary" />
-              <h1 className="mt-4 text-2xl font-bold tracking-tight">Password reset!</h1>
-              <p className="mt-2 text-sm text-muted-foreground">Redirecting to login...</p>
+              <h1 className="mt-4 text-2xl font-bold tracking-tight">
+                Password reset!
+              </h1>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Redirecting to login...
+              </p>
             </div>
           ) : (
             <>
@@ -105,19 +133,27 @@ function ResetPassword() {
                   <Lock className="h-5 w-5 text-primary-foreground" />
                 </span>
                 <div>
-                  <h1 className="text-xl font-bold tracking-tight">Set new password</h1>
-                  <p className="text-sm text-muted-foreground">Must be at least 8 characters.</p>
+                  <h1 className="text-xl font-bold tracking-tight">
+                    Set new password
+                  </h1>
+                  <p className="text-sm text-muted-foreground">
+                    Must be at least 8 characters.
+                  </p>
                 </div>
               </div>
 
               {error && (
-                <div className="mt-4 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
+                <div className="mt-4 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+                  {error}
+                </div>
               )}
 
               {ready && (
                 <form onSubmit={handleSubmit} className="mt-6 space-y-4">
                   <div>
-                    <label className="text-sm font-medium" htmlFor="password">New password</label>
+                    <label className="text-sm font-medium" htmlFor="password">
+                      New password
+                    </label>
                     <input
                       id="password"
                       type="password"
@@ -140,7 +176,12 @@ function ResetPassword() {
               )}
 
               <p className="mt-6 text-center text-sm text-muted-foreground">
-                <Link to="/login" className="font-medium text-primary hover:underline">← Back to login</Link>
+                <Link
+                  to="/login"
+                  className="font-medium text-primary hover:underline"
+                >
+                  ← Back to login
+                </Link>
               </p>
             </>
           )}

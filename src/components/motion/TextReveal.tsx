@@ -7,7 +7,11 @@ interface TextRevealProps {
   className?: string;
 }
 
-export function TextReveal({ children, as: Tag = "h2", className }: TextRevealProps) {
+export function TextReveal({
+  children,
+  as: Tag = "h2",
+  className,
+}: TextRevealProps) {
   const prefersReduced = useReducedMotion();
   const words = children.split(" ");
 
@@ -18,7 +22,10 @@ export function TextReveal({ children, as: Tag = "h2", className }: TextRevealPr
   return (
     <Tag className={className}>
       {words.map((word, i) => (
-        <span key={i} className="inline-block overflow-hidden mr-[0.25em] last:mr-0">
+        <span
+          key={i}
+          className="inline-block overflow-hidden mr-[0.25em] last:mr-0"
+        >
           <motion.span
             className="inline-block"
             initial={{ y: "100%" }}

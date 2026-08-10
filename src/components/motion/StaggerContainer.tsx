@@ -7,7 +7,11 @@ interface StaggerContainerProps {
   staggerDelay?: number;
 }
 
-export function StaggerContainer({ children, className, staggerDelay = 0.08 }: StaggerContainerProps) {
+export function StaggerContainer({
+  children,
+  className,
+  staggerDelay = 0.08,
+}: StaggerContainerProps) {
   const prefersReduced = useReducedMotion();
 
   return (
@@ -18,7 +22,7 @@ export function StaggerContainer({ children, className, staggerDelay = 0.08 }: S
       viewport={{ once: true, margin: "-60px" }}
       transition={{
         duration: 0.5,
-        ease: [0.25, 0.1, 0.25, 1],
+        ease: [0.25, 0.1, 0.25, 1] as const,
         staggerChildren: staggerDelay,
       }}
     >
@@ -32,6 +36,6 @@ export const staggerItem = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.5, ease: [0.25, 0.1, 0.25, 1] },
+    transition: { duration: 0.5, ease: [0.25, 0.1, 0.25, 1] as const },
   },
 };

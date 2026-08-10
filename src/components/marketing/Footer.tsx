@@ -55,15 +55,22 @@ export function Footer() {
           <motion.div
             variants={{
               hidden: { opacity: 0, y: 20 },
-              visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.25, 0.1, 0.25, 1] } },
+              visible: {
+                opacity: 1,
+                y: 0,
+                transition: { duration: 0.5, ease: [0.25, 0.1, 0.25, 1] },
+              },
             }}
           >
             <Link to="/" className="flex items-center gap-2">
               <img src="/logos.svg" alt="BotbaseAI" className="h-8 w-8" />
-              <span className="text-lg font-bold tracking-tight">BotbaseAI</span>
+              <span className="text-lg font-bold tracking-tight">
+                BotbaseAI
+              </span>
             </Link>
             <p className="mt-4 max-w-xs text-sm text-muted-foreground">
-              The complete platform for building & deploying AI support agents for your business.
+              The complete platform for building & deploying AI support agents
+              for your business.
             </p>
             <div className="mt-6 flex gap-3">
               <span className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground">
@@ -80,7 +87,11 @@ export function Footer() {
               key={col.title}
               variants={{
                 hidden: { opacity: 0, y: 20 },
-                visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.25, 0.1, 0.25, 1] } },
+                visible: {
+                  opacity: 1,
+                  y: 0,
+                  transition: { duration: 0.5, ease: [0.25, 0.1, 0.25, 1] },
+                },
               }}
             >
               <h4 className="text-sm font-semibold">{col.title}</h4>

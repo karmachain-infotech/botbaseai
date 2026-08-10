@@ -7,7 +7,10 @@ export const Route = createFileRoute("/dashboard/analytics")({
   head: () => ({
     meta: [
       { title: "Analytics — BotbaseAI" },
-      { name: "description", content: "Aggregate analytics across all your AI agents." },
+      {
+        name: "description",
+        content: "Aggregate analytics across all your AI agents.",
+      },
     ],
   }),
   component: DashboardAnalytics,
@@ -29,7 +32,9 @@ function DashboardAnalytics() {
   useEffect(() => {
     mountedRef.current = true;
     loadStats();
-    return () => { mountedRef.current = false; };
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
 
   async function loadStats() {
@@ -50,7 +55,10 @@ function DashboardAnalytics() {
         <div className="h-8 w-48 animate-pulse rounded bg-secondary" />
         <div className="mt-8 grid grid-cols-2 gap-4 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-28 animate-pulse rounded-xl bg-secondary" />
+            <div
+              key={i}
+              className="h-28 animate-pulse rounded-xl bg-secondary"
+            />
           ))}
         </div>
       </div>
@@ -63,15 +71,23 @@ function DashboardAnalytics() {
         <BarChart3 className="h-6 w-6 text-primary" />
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Analytics</h1>
-          <p className="text-sm text-muted-foreground">Aggregate performance across all agents.</p>
+          <p className="text-sm text-muted-foreground">
+            Aggregate performance across all agents.
+          </p>
         </div>
       </div>
 
       {error && (
         <div className="mt-4 flex items-center justify-between rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
           <span>{error}</span>
-          <button onClick={() => { setError(""); setLoading(true); loadStats(); }}
-            className="ml-3 shrink-0 rounded-lg bg-destructive/20 px-3 py-1 text-xs font-medium text-destructive hover:bg-destructive/30">
+          <button
+            onClick={() => {
+              setError("");
+              setLoading(true);
+              loadStats();
+            }}
+            className="ml-3 shrink-0 rounded-lg bg-destructive/20 px-3 py-1 text-xs font-medium text-destructive hover:bg-destructive/30"
+          >
             Retry
           </button>
         </div>
@@ -79,15 +95,52 @@ function DashboardAnalytics() {
 
       <div className="mt-8 grid grid-cols-2 gap-4 lg:grid-cols-3">
         {[
-          { label: "Total conversations", value: stats.totalConversations.toLocaleString(), icon: MessageSquare, gradient: "from-blue-500/20 to-indigo-500/20" },
-          { label: "Total messages", value: stats.totalMessages.toLocaleString(), icon: MessageSquare, gradient: "from-purple-500/20 to-pink-500/20" },
-          { label: "Avg response time", value: stats.avgResponseTime ? `${(stats.avgResponseTime / 1000).toFixed(1)}s` : "—", icon: Clock, gradient: "from-amber-500/20 to-orange-500/20" },
-          { label: "All agents", value: stats.totalAgents.toString(), icon: Bot, gradient: "from-primary/20 to-purple-500/20" },
-          { label: "Live agents", value: stats.liveAgents.toString(), icon: TrendingUp, gradient: "from-emerald-500/20 to-teal-500/20" },
-          { label: "Resolution rate", value: `${stats.resolvedRate}%`, icon: TrendingUp, gradient: "from-rose-500/20 to-red-500/20" },
+          {
+            label: "Total conversations",
+            value: stats.totalConversations.toLocaleString(),
+            icon: MessageSquare,
+            gradient: "from-blue-500/20 to-indigo-500/20",
+          },
+          {
+            label: "Total messages",
+            value: stats.totalMessages.toLocaleString(),
+            icon: MessageSquare,
+            gradient: "from-purple-500/20 to-pink-500/20",
+          },
+          {
+            label: "Avg response time",
+            value: stats.avgResponseTime
+              ? `${(stats.avgResponseTime / 1000).toFixed(1)}s`
+              : "—",
+            icon: Clock,
+            gradient: "from-amber-500/20 to-orange-500/20",
+          },
+          {
+            label: "All agents",
+            value: stats.totalAgents.toString(),
+            icon: Bot,
+            gradient: "from-primary/20 to-purple-500/20",
+          },
+          {
+            label: "Live agents",
+            value: stats.liveAgents.toString(),
+            icon: TrendingUp,
+            gradient: "from-emerald-500/20 to-teal-500/20",
+          },
+          {
+            label: "Resolution rate",
+            value: `${stats.resolvedRate}%`,
+            icon: TrendingUp,
+            gradient: "from-rose-500/20 to-red-500/20",
+          },
         ].map((s) => (
-          <div key={s.label} className="relative overflow-hidden rounded-xl border border-border bg-card p-5 transition-all hover:border-primary/40 hover:shadow-card">
-            <div className={`absolute inset-0 bg-gradient-to-br ${s.gradient} opacity-50`} />
+          <div
+            key={s.label}
+            className="relative overflow-hidden rounded-xl border border-border bg-card p-5 transition-all hover:border-primary/40 hover:shadow-card"
+          >
+            <div
+              className={`absolute inset-0 bg-gradient-to-br ${s.gradient} opacity-50`}
+            />
             <div className="relative flex items-center justify-between">
               <p className="text-sm text-muted-foreground">{s.label}</p>
               <s.icon className="h-4 w-4 text-muted-foreground" />
@@ -101,8 +154,15 @@ function DashboardAnalytics() {
         <div className="mt-8 flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border p-12 text-center">
           <BarChart3 className="h-12 w-12 text-muted-foreground/40" />
           <p className="text-lg font-semibold">No data yet</p>
-          <p className="text-sm text-muted-foreground">Analytics will appear once your agents receive messages.</p>
-          <Link to="/dashboard" className="text-sm font-medium text-primary hover:underline">← Back to agents</Link>
+          <p className="text-sm text-muted-foreground">
+            Analytics will appear once your agents receive messages.
+          </p>
+          <Link
+            to="/dashboard"
+            className="text-sm font-medium text-primary hover:underline"
+          >
+            ← Back to agents
+          </Link>
         </div>
       )}
     </div>

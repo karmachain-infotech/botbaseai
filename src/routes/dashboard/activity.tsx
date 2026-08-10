@@ -1,6 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
-import { MessageSquare, CheckCircle, AlertCircle, ArrowUpRight, Clock, Bot, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  MessageSquare,
+  CheckCircle,
+  AlertCircle,
+  ArrowUpRight,
+  Clock,
+  Bot,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { createClient } from "@/lib/supabase/client";
 import type { ConversationStatus } from "@/types/database";
@@ -21,17 +30,34 @@ interface ConversationRecord {
   updated_at: string;
 }
 
+type MessageRecord = {
+  id: string;
+  conversation_id: string;
+  role: string;
+  content: string;
+  created_at: string;
+  response_time_ms?: number | null;
+};
+
 export const Route = createFileRoute("/dashboard/activity")({
   head: () => ({
     meta: [
       { title: "Activity — BotbaseAI" },
-      { name: "description", content: "View all conversations across your AI agents." },
+      {
+        name: "description",
+        content: "View all conversations across your AI agents.",
+      },
     ],
   }),
   component: DashboardActivity,
 });
 
-const statusFilters: (ConversationStatus | "all")[] = ["all", "open", "resolved", "escalated"];
+const statusFilters: (ConversationStatus | "all")[] = [
+  "all",
+  "open",
+  "resolved",
+  "escalated",
+];
 
 function DashboardActivity() {
   const { user, loading: authLoading } = useAuth();
@@ -41,10 +67,13 @@ function DashboardActivity() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState<ConversationRecord | null>(null);
-  const [messages, setMessages] = useState<any[]>([]);
+  const [messages, setMessages] = useState<MessageRecord[]>([]);
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  const botDataRef = useRef<{ botMap: Map<string, string>; botIds: string[] } | null>(null);
+  const botDataRef = useRef<{
+    botMap: Map<string, string>;
+    botIds: string[];
+  } | null>(null);
   const mountedRef = useRef(true);
 
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
@@ -53,7 +82,9 @@ function DashboardActivity() {
     mountedRef.current = true;
     if (!authLoading && user) loadInitial();
     if (!authLoading && !user) setLoading(false);
-    return () => { mountedRef.current = false; };
+    return () => {
+      mountedRef.current = false;
+    };
   }, [user, authLoading]);
 
   useEffect(() => {
@@ -75,7 +106,8 @@ function DashboardActivity() {
 
       if (botErr) {
         console.error("Chatbots query error:", botErr);
-        if (mountedRef.current) setError("Failed to load chatbots: " + botErr.message);
+        if (mountedRef.current)
+          setError("Failed to load chatbots: " + botErr.message);
         return;
       }
 
@@ -89,8 +121,8 @@ function DashboardActivity() {
         return;
       }
 
-      const botMap = new Map(chatbots.map(b => [b.id, b.name]));
-      const botIds = chatbots.map(b => b.id);
+      const botMap = new Map(chatbots.map((b) => [b.id, b.name]));
+      const botIds = chatbots.map((b) => b.id);
       botDataRef.current = { botMap, botIds };
 
       setPage(1);
@@ -124,7 +156,9 @@ function DashboardActivity() {
 
     const { data: convData, error: convErr } = await supabase
       .from("conversations")
-      .select("id, chatbot_id, session_id, user_identifier, status, escalated, rating, created_at, updated_at, messages(count)")
+      .select(
+        "id, chatbot_id, session_id, user_identifier, status, escalated, rating, created_at, updated_at, messages(count)",
+      )
       .in("chatbot_id", ids)
       .order("updated_at", { ascending: false })
       .range(from, to);
@@ -133,14 +167,16 @@ function DashboardActivity() {
 
     if (convErr) {
       console.error("Conversations query error:", convErr);
-      if (mountedRef.current) setError("Failed to load conversations: " + convErr.message);
+      if (mountedRef.current)
+        setError("Failed to load conversations: " + convErr.message);
       return;
     }
 
-    const raw: ConversationRecord[] = (convData ?? []).map(c => ({
+    const raw: ConversationRecord[] = (convData ?? []).map((c) => ({
       ...c,
       chatbot_name: map.get(c.chatbot_id) ?? "Unknown",
-      message_count: (c as Record<string, unknown>).messages?.[0]?.count ?? 0,
+      message_count:
+        (c as { messages?: { count?: number }[] }).messages?.[0]?.count ?? 0,
     }));
 
     const grouped = new Map<string, ConversationRecord>();
@@ -185,7 +221,7 @@ function DashboardActivity() {
         .from("conversations")
         .select("id")
         .eq("session_id", conv.session_id);
-      const ids = (convIds ?? []).map(c => c.id);
+      const ids = (convIds ?? []).map((c) => c.id);
       if (ids.length === 0) return;
       const { data } = await supabase
         .from("messages")
@@ -198,12 +234,15 @@ function DashboardActivity() {
     }
   }
 
-  const filtered = filter === "all"
-    ? conversations
-    : conversations.filter(c => c.status === filter);
+  const filtered =
+    filter === "all"
+      ? conversations
+      : conversations.filter((c) => c.status === filter);
 
   function timeAgo(dateStr: string): string {
-    const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+    const seconds = Math.floor(
+      (Date.now() - new Date(dateStr).getTime()) / 1000,
+    );
     if (seconds < 60) return "Just now";
     if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
     if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
@@ -216,7 +255,10 @@ function DashboardActivity() {
         <div className="h-8 w-36 animate-pulse rounded bg-secondary" />
         <div className="mt-6 space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="h-16 animate-pulse rounded-xl bg-secondary" />
+            <div
+              key={i}
+              className="h-16 animate-pulse rounded-xl bg-secondary"
+            />
           ))}
         </div>
       </div>
@@ -229,15 +271,23 @@ function DashboardActivity() {
         <MessageSquare className="h-6 w-6 text-primary" />
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Activity</h1>
-          <p className="text-sm text-muted-foreground">Conversations across all your agents.</p>
+          <p className="text-sm text-muted-foreground">
+            Conversations across all your agents.
+          </p>
         </div>
       </div>
 
       {error && (
         <div className="mt-4 flex items-center justify-between rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
           <span>{error}</span>
-          <button onClick={() => { setError(""); setLoading(true); loadInitial(); }}
-            className="ml-3 shrink-0 rounded-lg bg-destructive/20 px-3 py-1 text-xs font-medium text-destructive hover:bg-destructive/30">
+          <button
+            onClick={() => {
+              setError("");
+              setLoading(true);
+              loadInitial();
+            }}
+            className="ml-3 shrink-0 rounded-lg bg-destructive/20 px-3 py-1 text-xs font-medium text-destructive hover:bg-destructive/30"
+          >
             Retry
           </button>
         </div>
@@ -285,23 +335,33 @@ function DashboardActivity() {
                 key={conv.id}
                 onClick={() => openConversation(conv)}
                 className={`w-full rounded-xl border p-4 text-left transition-colors hover:border-primary/40 ${
-                  selected?.id === conv.id ? "border-primary bg-primary/5" : "border-border bg-card"
+                  selected?.id === conv.id
+                    ? "border-primary bg-primary/5"
+                    : "border-border bg-card"
                 }`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <Bot className="h-4 w-4 shrink-0 text-muted-foreground" />
-                      <span className="text-sm font-medium truncate">{conv.chatbot_name}</span>
+                      <span className="text-sm font-medium truncate">
+                        {conv.chatbot_name}
+                      </span>
                     </div>
                     <p className="mt-1.5 text-xs text-muted-foreground truncate">
-                      {conv.user_identifier ?? `Session: ${conv.session_id.slice(0, 12)}...`}
+                      {conv.user_identifier ??
+                        `Session: ${conv.session_id.slice(0, 12)}...`}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <StatusIcon status={conv.status} escalated={conv.escalated} />
+                    <StatusIcon
+                      status={conv.status}
+                      escalated={conv.escalated}
+                    />
                     {conv.rating && (
-                      <span className="text-xs text-muted-foreground">{conv.rating}/5</span>
+                      <span className="text-xs text-muted-foreground">
+                        {conv.rating}/5
+                      </span>
                     )}
                   </div>
                 </div>
@@ -325,7 +385,10 @@ function DashboardActivity() {
                   <ChevronLeft className="h-4 w-4" />
                 </button>
                 {Array.from({ length: totalPages }, (_, i) => i + 1)
-                  .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+                  .filter(
+                    (p) =>
+                      p === 1 || p === totalPages || Math.abs(p - page) <= 1,
+                  )
                   .map((p, idx, arr) => (
                     <span key={p} className="flex items-center gap-1">
                       {idx > 0 && arr[idx - 1] !== p - 1 && (
@@ -358,15 +421,27 @@ function DashboardActivity() {
             <div className="rounded-xl border border-border bg-card p-4">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-sm">Conversation</h3>
-                <button onClick={() => setSelected(null)} className="text-xs text-muted-foreground hover:text-foreground">Close</button>
+                <button
+                  onClick={() => setSelected(null)}
+                  className="text-xs text-muted-foreground hover:text-foreground"
+                >
+                  Close
+                </button>
               </div>
               <div className="mt-4 space-y-3 max-h-[500px] overflow-y-auto">
                 {messages.length === 0 && (
-                  <p className="text-xs text-muted-foreground">Loading messages...</p>
+                  <p className="text-xs text-muted-foreground">
+                    Loading messages...
+                  </p>
                 )}
                 {messages.map((msg) => (
-                  <div key={msg.id} className={`rounded-lg p-3 text-sm ${msg.role === "user" ? "bg-secondary" : "bg-primary/5 border border-border"}`}>
-                    <p className="text-xs font-medium text-muted-foreground capitalize mb-1">{msg.role}</p>
+                  <div
+                    key={msg.id}
+                    className={`rounded-lg p-3 text-sm ${msg.role === "user" ? "bg-secondary" : "bg-primary/5 border border-border"}`}
+                  >
+                    <p className="text-xs font-medium text-muted-foreground capitalize mb-1">
+                      {msg.role}
+                    </p>
                     <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                   </div>
                 ))}
@@ -379,7 +454,13 @@ function DashboardActivity() {
   );
 }
 
-function StatusIcon({ status, escalated }: { status: ConversationStatus; escalated: boolean }) {
+function StatusIcon({
+  status,
+  escalated,
+}: {
+  status: ConversationStatus;
+  escalated: boolean;
+}) {
   if (escalated || status === "escalated") {
     return <ArrowUpRight className="h-4 w-4 text-destructive" />;
   }

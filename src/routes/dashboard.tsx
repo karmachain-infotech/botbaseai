@@ -17,14 +17,21 @@ function DashboardLayout() {
 
   useEffect(() => {
     if (loading || !user) return;
-    syncSubscription().catch(() => console.error("Failed to sync subscription"));
+    syncSubscription().catch(() =>
+      console.error("Failed to sync subscription"),
+    );
   }, [user, loading]);
 
   return (
     <div className="flex min-h-screen w-full bg-background">
-      <DashboardSidebar isOpen={mobileSidebarOpen} onClose={() => setMobileSidebarOpen(false)} />
+      <DashboardSidebar
+        isOpen={mobileSidebarOpen}
+        onClose={() => setMobileSidebarOpen(false)}
+      />
       <div className="flex min-w-0 flex-1 flex-col">
-        <DashboardTopbar onToggleSidebar={() => setMobileSidebarOpen((prev) => !prev)} />
+        <DashboardTopbar
+          onToggleSidebar={() => setMobileSidebarOpen((prev) => !prev)}
+        />
         <main className="flex-1 overflow-x-hidden">
           <Outlet />
         </main>

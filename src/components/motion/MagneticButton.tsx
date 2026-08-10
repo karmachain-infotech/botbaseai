@@ -10,7 +10,12 @@ interface MagneticButtonProps {
   [key: string]: unknown;
 }
 
-export function MagneticButton({ children, className, as: Tag = "button", ...props }: MagneticButtonProps) {
+export function MagneticButton({
+  children,
+  className,
+  as: Tag = "button",
+  ...props
+}: MagneticButtonProps) {
   const ref = useRef<HTMLButtonElement & HTMLAnchorElement>(null);
   const prefersReduced = useReducedMotion();
 
@@ -29,7 +34,7 @@ export function MagneticButton({ children, className, as: Tag = "button", ...pro
 
   if (Tag === "a") {
     return (
-      <m.a
+      <motion.a
         ref={ref}
         className={className}
         onMouseMove={handleMouse}
@@ -39,7 +44,7 @@ export function MagneticButton({ children, className, as: Tag = "button", ...pro
         {...props}
       >
         {children}
-      </m.a>
+      </motion.a>
     );
   }
 
